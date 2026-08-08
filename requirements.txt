@@ -1,0 +1,32 @@
+# ============================================================
+# Adaptive Distributed Framework — Requirements
+# Python 3.12+
+# ============================================================
+
+# ---- Core Runtime ----
+pyyaml>=6.0.1           # YAML configuration loading
+ray>=2.10.0             # Distributed actor coordination (Phase 2+)
+psutil>=5.9.8           # System resource monitoring
+rich>=13.7.0            # Enhanced terminal output
+
+# ---- Development & Linting ----
+black>=24.3.0           # Code formatter
+isort>=5.13.2           # Import sorter
+ruff>=0.4.0             # Fast linter
+mypy>=1.9.0             # Static type checker
+types-PyYAML>=6.0.12    # MyPy stubs for PyYAML
+
+# ---- Testing ----
+pytest>=8.1.0           # Test runner
+pytest-cov>=5.0.0       # Coverage reporting
+pytest-asyncio>=0.23.6  # Async test support
+
+# ---- Pre-commit ----
+pre-commit>=3.7.0       # Git hooks manager
+
+# ---- Future Phases (commented — install when needed) ----
+# paddleocr>=2.7.0      # Phase 2: OCR backend
+# paddlepaddle>=2.6.0   # Phase 2: PaddlePaddle runtime
+# langchain>=0.1.0      # Phase 3: RAG pipeline
+# chromadb>=0.4.0       # Phase 3: Vector store
+# sentence-transformers>=2.6.0  # Phase 3: Embeddings

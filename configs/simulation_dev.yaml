@@ -1,0 +1,54 @@
+# =============================================================
+# simulation_dev.yaml — Development / Single-Laptop Mode
+# Adaptive Distributed Framework v2.0  |  Phase 2B
+# =============================================================
+#
+# For local development on a single machine.
+# Spawns multiple worker processes on the same host.
+#
+# Usage:
+#   python scripts/start_dev_cluster.py
+# =============================================================
+
+cluster:
+  mode: dev
+
+  head:
+    address: auto
+    dashboard_port: 8265
+    object_store_memory: 0
+    temp_dir: null
+
+  workers:
+    num_workers_dev: 4
+    cpus_per_worker: 1
+    ram_gb_per_worker: 0
+    gpus_per_worker: 0
+    namespace: "adaptive_framework_dev"
+
+  health:
+    heartbeat_interval_seconds: 5.0
+    heartbeat_timeout_seconds: 15.0
+    health_check_interval_seconds: 2.0
+
+  failure_recovery:
+    max_retries: 3
+    reassignment_delay_seconds: 0.5
+    auto_recovery_enabled: true
+
+  work_stealing:
+    enabled: true
+    steal_threshold: 2
+    steal_fraction: 0.5
+    check_interval_seconds: 3.0
+
+  resource_orchestration:
+    sample_interval_seconds: 5.0
+    cpu_high_threshold_percent: 85.0
+    cpu_low_threshold_percent: 20.0
+
+  presentation:
+    head_ip: "127.0.0.1"
+    head_port: 6379
+    worker_ips: []
+    workers_per_laptop: 4

@@ -1,0 +1,121 @@
+# =============================================================
+# cluster.yaml — Ray Cluster Configuration
+# Adaptive Distributed Framework v2.0  |  Phase 2B
+# =============================================================
+#
+# Mode selection:
+#   dev          — Single laptop, multiple local workers (simulation)
+#   presentation — Three-laptop deployment (head on laptop 1, workers on 2 & 3)
+#
+# ONLY this file changes between dev and presentation modes.
+# Zero source code changes required.
+# =============================================================
+
+cluster:
+  # ------------------------------------------------------------------
+  # Deployment mode: "dev" | "presentation"
+  # ------------------------------------------------------------------
+  mode: dev
+
+  # ------------------------------------------------------------------
+  # Head node configuration
+  # ------------------------------------------------------------------
+  head:
+    # "auto" → ray.init() starts a local cluster (dev mode)
+    # "<IP>:6379" → ray.init(address="<IP>:6379") connects to running head
+    address: auto
+
+    # Dashboard port for Ray's built-in dashboard
+    dashboard_port: 8265
+
+    # Object store memory per node (bytes). 0 = let Ray decide automatically.
+    object_store_memory: 0
+
+    # Temporary directory for Ray runtime files
+    temp_dir: null  # null = OS default
+
+  # ------------------------------------------------------------------
+  # Worker configuration
+  # ------------------------------------------------------------------
+  workers:
+    # Number of worker processes to spawn (dev mode only).
+    # In presentation mode, workers are started manually on each laptop.
+    num_workers_dev: 4
+
+    # CPUs to allocate per worker actor
+    cpus_per_worker: 2
+
+    # RAM limit per worker (GB). 0 = no limit.
+    ram_gb_per_worker: 0
+
+    # Optional GPU allocation per worker (0 = no GPU)
+    gpus_per_worker: 0
+
+    # Namespace for all framework actors (prevents name collisions)
+    namespace: "adaptive_framework"
+
+  # ------------------------------------------------------------------
+  # Health monitoring
+  # ------------------------------------------------------------------
+  health:
+    # Heartbeat interval (seconds): how often workers ping the coordinator
+    heartbeat_interval_seconds: 5.0
+
+    # Timeout (seconds): a worker is declared LOST if no heartbeat arrives
+    heartbeat_timeout_seconds: 15.0
+
+    # Polling interval for the coordinator's health-check loop
+    health_check_interval_seconds: 2.0
+
+  # ------------------------------------------------------------------
+  # Failure recovery
+  # ------------------------------------------------------------------
+  failure_recovery:
+    # Maximum number of retries for a failed work unit
+    max_retries: 3
+
+    # Delay (seconds) before reassigning a recovered work unit
+    reassignment_delay_seconds: 1.0
+
+    # Whether to automatically recover lost workers' tasks
+    auto_recovery_enabled: true
+
+  # ------------------------------------------------------------------
+  # Work stealing
+  # ------------------------------------------------------------------
+  work_stealing:
+    enabled: true
+
+    # Minimum tasks a worker must have before it can be stolen from
+    steal_threshold: 2
+
+    # Fraction of tasks to steal per event
+    steal_fraction: 0.5
+
+    # How often the work-stealing algorithm runs (seconds)
+    check_interval_seconds: 3.0
+
+  # ------------------------------------------------------------------
+  # Resource orchestration
+  # ------------------------------------------------------------------
+  resource_orchestration:
+    # Sampling interval for CPU/RAM/GPU monitoring (seconds)
+    sample_interval_seconds: 5.0
+
+    # CPU threshold above which the orchestrator recommends scaling out
+    cpu_high_threshold_percent: 85.0
+
+    # CPU threshold below which the orchestrator recommends scaling in
+    cpu_low_threshold_percent: 20.0
+
+  # ------------------------------------------------------------------
+  # Presentation mode — laptop addresses
+  # (Only used when mode: presentation)
+  # ------------------------------------------------------------------
+  presentation:
+    head_ip: "192.168.1.100"    # IP of Laptop 1 (head node)
+    head_port: 6379
+    worker_ips:
+      - "192.168.1.101"         # Laptop 2
+      - "192.168.1.102"         # Laptop 3
+    workers_per_laptop: 2

@@ -1,0 +1,53 @@
+# =============================================================
+# rag.yaml — RAG Demo Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 5 implementation — placeholder values for Phase 1
+# Pipeline: Ingestion → Chunking → Embedding → Vector Store → Query
+# =============================================================
+
+rag:
+  # Enable or disable the RAG demo module
+  enabled: true
+
+  chunker:
+    # Chunking strategy: "fixed_size" | "sentence" | "semantic"
+    strategy: "fixed_size"
+
+    # Target chunk size in tokens
+    chunk_size: 512
+
+    # Overlap between consecutive chunks (tokens)
+    chunk_overlap: 64
+
+  embedder:
+    # Embedding model: "sentence-transformers/all-MiniLM-L6-v2" etc.
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+
+    # Embedding device: "cpu" | "cuda"
+    device: "cpu"
+
+    # Batch size for embedding generation
+    batch_size: 32
+
+    # Output embedding dimension (must match model)
+    embedding_dim: 384
+
+  vector_store:
+    # Backend: "chromadb" | "faiss" | "qdrant"
+    backend: "chromadb"
+
+    # Persistence directory (relative to framework output_dir)
+    persist_dir: "rag/vector_store"
+
+    # Collection name inside the vector store
+    collection_name: "biomedical_docs"
+
+  retrieval:
+    # Number of top-k documents to retrieve per query
+    top_k: 5
+
+    # Similarity metric: "cosine" | "l2" | "ip"
+    similarity_metric: "cosine"
+
+    # Minimum similarity score to include a result (0.0 – 1.0)
+    min_score_threshold: 0.5

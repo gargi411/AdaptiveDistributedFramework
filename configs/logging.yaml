@@ -1,0 +1,49 @@
+# =============================================================
+# logging.yaml — Centralized Logging Configuration
+# Adaptive Distributed Framework v2.0
+# =============================================================
+
+logging:
+  # Root log level: DEBUG | INFO | WARNING | ERROR | CRITICAL
+  level: "INFO"
+
+  # Log format: "text" for human-readable, "json" for structured
+  format: "json"
+
+  console:
+    enabled: true
+    level: "INFO"
+    # Use rich formatting for console output
+    use_rich: true
+    # Show colors in terminal
+    colorize: true
+
+  file:
+    enabled: true
+    level: "DEBUG"
+    # Path relative to framework output_dir
+    path: "logs/framework.log"
+    # Maximum size per log file before rotation (bytes)
+    max_bytes: 10485760        # 10 MB
+    # Number of rotated backups to keep
+    backup_count: 5
+    # Encoding for log file
+    encoding: "utf-8"
+
+  json_file:
+    enabled: true
+    level: "DEBUG"
+    path: "logs/framework.jsonl"
+    max_bytes: 10485760        # 10 MB
+    backup_count: 5
+    encoding: "utf-8"
+
+  # Fields automatically injected into every log record
+  context_fields:
+    - run_id
+    - worker_id
+    - node_id
+    - module_name
+    - timestamp
+    - thread_id
+    - process_id

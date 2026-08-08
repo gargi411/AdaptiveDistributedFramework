@@ -1,0 +1,80 @@
+# =============================================================
+# dataset_builder.yaml — Dataset Builder Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 2A — PubMed Central Open Access dataset acquisition
+# Phase 3.5 — Real Biomedical Dataset Integration
+# =============================================================
+
+dataset_builder:
+  # ---- PubMed Central Search ----
+  # Biomedical keyword queries for PubMed Central search.
+  # Multiple keywords are searched independently; results are deduplicated.
+  keywords:
+    - "cancer immunotherapy"
+    - "diabetes mellitus type 2"
+    - "alzheimer disease biomarkers"
+    - "cardiovascular disease genomics"
+    - "CRISPR gene therapy"
+
+  # Maximum number of PDFs to download per run.
+  # Increase for full research dataset (≥500 recommended for publication).
+  max_downloads: 150
+
+  # Restrict search to Open Access articles only (required for legal PDF download)
+  only_open_access: true
+
+  # ---- Output Paths ----
+  # Root output directory (relative to CWD).
+  # Structure:
+  #   output_dir/
+  #   ├── raw/          ← Downloaded PDFs
+  #   └── metadata.csv  ← Article-level metadata
+  output_dir: "dataset"
+
+  # ---- Download Settings ----
+  # Maximum retry attempts per article download.
+  max_retries: 3
+
+  # ---- Development / Testing Mode ----
+  # Set to true to cap downloads at 10 for quick local testing.
+  # IMPORTANT: Set to false for research/production runs.
+  dev_mode: false
+
+  # ---- NCBI API Identity ----
+  # Sent to NCBI E-utilities in every request (ToS requirement).
+  # Replace with your institution name and email.
+  tool_name: "AdaptiveDistributedFramework"
+  email: "adf@research.edu"
+
+# =============================================================
+# Phase 3.5 — Local Dataset Configuration
+# Used by DatasetScanner, DatasetLoader, and DocumentRegistry.
+# All paths are relative to the project root (CWD).
+# =============================================================
+
+dataset:
+  # ---- Source PDF directory ----
+  # Root folder containing the downloaded biomedical PDFs.
+  # NEVER hardcode this path in source code — always read from this file.
+  root: "dataset/raw/pmc_pdfs"
+
+  # ---- Recursive scanning ----
+  # If true, scans all sub-directories for PDFs.
+  # Set to false for a flat directory (current layout).
+  recursive: false
+
+  # ---- Accepted file extensions ----
+  # Only files with these extensions are included in the scan.
+  extensions:
+    - pdf
+
+  # ---- Metadata cache directory ----
+  # DatasetLoader writes metadata_extracted.csv + metadata_extracted.json here.
+  # Set force_refresh: true to bypass cache and re-extract all metadata.
+  metadata_cache_dir: "dataset/metadata"
+  force_refresh: false
+
+  # ---- Text sampling for source-type detection ----
+  # Number of pages sampled per PDF to determine if it is digital or scanned.
+  # Higher values are more accurate but slower.
+  text_sample_pages: 3

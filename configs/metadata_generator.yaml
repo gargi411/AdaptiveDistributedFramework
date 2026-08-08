@@ -1,0 +1,24 @@
+# =============================================================
+# metadata_generator.yaml — Metadata Generator Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 2A
+# =============================================================
+
+metadata_generator:
+  # ---- Extraction Settings ----
+  # Number of pages to sample per document for digital/scanned detection.
+  # Higher = more accurate but slower. Recommended: 3–5.
+  text_sample_pages: 3
+
+  # ---- Output ----
+  # Directory to write metadata_extracted.csv and metadata_extracted.json.
+  # Must be the same as dataset_builder.output_dir for the pipeline to find them.
+  output_dir: "dataset"
+
+  # Filename for the extracted metadata CSV (PDF-level technical fields).
+  csv_filename: "metadata_extracted.csv"
+
+  # ---- Error Handling ----
+  # If true, skip corrupt/unreadable PDFs with a warning log.
+  # If false, raise DatasetError on first failure.
+  skip_invalid: true

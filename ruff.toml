@@ -1,0 +1,51 @@
+# Ruff configuration for Adaptive Distributed Framework
+# https://docs.astral.sh/ruff/configuration/
+
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # ruff-specific rules
+    "N",   # pep8-naming
+    "D",   # pydocstyle (Google style)
+    "ANN", # flake8-annotations
+    "S",   # flake8-bandit (security)
+    "PT",  # flake8-pytest-style
+]
+
+ignore = [
+    "D100",   # Missing docstring in public module (handled by __init__.py READMEs)
+    "D104",   # Missing docstring in public package
+    "D107",   # Missing docstring in __init__
+    "ANN101", # Missing type annotation for `self`
+    "ANN102", # Missing type annotation for `cls`
+    "S101",   # Use of `assert` (allowed in tests)
+]
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "ANN", "D"]
+"scripts/**/*.py" = ["T201", "ANN"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.isort]
+known-first-party = ["adaptive_framework"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

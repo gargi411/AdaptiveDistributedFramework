@@ -1,0 +1,29 @@
+# =============================================================
+# framework.yaml — Master Framework Configuration
+# Adaptive Distributed Framework v2.0
+# =============================================================
+
+framework:
+  # Human-readable name displayed in logs and reports
+  name: "Adaptive Distributed Parallel Processing Framework"
+
+  # Semantic version of this configuration schema
+  version: "2.0.0"
+
+  # Unique run identifier prefix — appended with timestamp at runtime
+  run_id_prefix: "adf_run"
+
+  # Root directory for all runtime outputs (logs, results, checkpoints)
+  output_dir: "outputs"
+
+  # Enable/disable debug mode (more verbose logging, extra assertions)
+  debug: false
+
+  # Maximum number of concurrent pipeline jobs across the cluster
+  max_concurrent_jobs: 8
+
+  # Global timeout for any single pipeline stage (seconds)
+  stage_timeout_seconds: 3600
+
+  # Graceful shutdown timeout before force-kill (seconds)
+  shutdown_timeout_seconds: 30

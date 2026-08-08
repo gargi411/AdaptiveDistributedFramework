@@ -1,0 +1,49 @@
+# =============================================================
+# scheduler.yaml — Adaptive Scheduler Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 3 implementation — placeholder values for Phase 1
+# =============================================================
+
+scheduler:
+  # Scheduling strategy: "page_count" (primary), extensible for future strategies
+  strategy: "page_count"
+
+  # Priority queue configuration
+  priority_queue:
+    # Maximum number of tasks in the queue
+    max_size: 10000
+
+    # Queue poll interval when empty (seconds)
+    poll_interval_seconds: 0.1
+
+  # Work Stealing configuration
+  work_stealing:
+    enabled: true
+
+    # Minimum number of tasks a worker must have before others can steal
+    steal_threshold: 2
+
+    # Maximum fraction of tasks that can be stolen per steal operation
+    steal_fraction: 0.5
+
+    # Interval between work-stealing checks (seconds)
+    check_interval_seconds: 1.0
+
+  # Scheduler overhead monitoring
+  overhead_monitoring:
+    enabled: true
+
+    # Target maximum scheduler overhead (fraction, not percentage)
+    # 0.01 = 1% — must be < 0.01 per architecture spec
+    target_max_overhead_fraction: 0.01
+
+    # Emit a warning log if overhead exceeds target
+    warn_on_exceed: true
+
+  # Partition configuration
+  partition:
+    # Default number of partitions when not auto-computed
+    default_partition_count: 4
+
+    # Minimum pages per partition to avoid over-fragmentation
+    min_pages_per_partition: 10

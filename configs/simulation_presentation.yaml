@@ -1,0 +1,61 @@
+# =============================================================
+# simulation_presentation.yaml — Three-Laptop Presentation Mode
+# Adaptive Distributed Framework v2.0  |  Phase 2B
+# =============================================================
+#
+# For three-laptop deployment during research presentation.
+#
+# Laptop 1 (Head):    python scripts/start_presentation_head.py
+# Laptop 2 (Worker):  python scripts/start_presentation_worker.py
+# Laptop 3 (Worker):  python scripts/start_presentation_worker.py
+#
+# ONLY this file changes from simulation_dev.yaml.
+# Zero source code changes required.
+# =============================================================
+
+cluster:
+  mode: presentation
+
+  head:
+    # Replace with Laptop 1's actual IP address
+    address: "192.168.1.100:6379"
+    dashboard_port: 8265
+    object_store_memory: 0
+    temp_dir: null
+
+  workers:
+    num_workers_dev: 2        # Workers per laptop in presentation mode
+    cpus_per_worker: 2
+    ram_gb_per_worker: 0
+    gpus_per_worker: 0
+    namespace: "adaptive_framework_presentation"
+
+  health:
+    heartbeat_interval_seconds: 5.0
+    heartbeat_timeout_seconds: 20.0   # Slightly higher for network latency
+    health_check_interval_seconds: 3.0
+
+  failure_recovery:
+    max_retries: 3
+    reassignment_delay_seconds: 1.0
+    auto_recovery_enabled: true
+
+  work_stealing:
+    enabled: true
+    steal_threshold: 2
+    steal_fraction: 0.5
+    check_interval_seconds: 5.0
+
+  resource_orchestration:
+    sample_interval_seconds: 10.0
+    cpu_high_threshold_percent: 80.0
+    cpu_low_threshold_percent: 15.0
+
+  presentation:
+    # Update these with actual IPs on your network
+    head_ip: "192.168.1.100"
+    head_port: 6379
+    worker_ips:
+      - "192.168.1.101"     # Laptop 2
+      - "192.168.1.102"     # Laptop 3
+    workers_per_laptop: 2

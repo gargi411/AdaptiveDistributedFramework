@@ -1,0 +1,47 @@
+# =============================================================
+# ray_cluster.yaml — Ray Cluster Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 2 implementation — placeholder values for Phase 1
+# =============================================================
+
+ray_cluster:
+  # Ray cluster address: "auto" for existing cluster, "local" for single-node
+  address: "local"
+
+  # Number of CPUs available to Ray (null = auto-detect)
+  num_cpus: null
+
+  # Number of GPUs available to Ray (null = auto-detect)
+  num_gpus: null
+
+  # Maximum memory Ray can use (bytes, null = auto-detect)
+  object_store_memory: null
+
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+    host: "127.0.0.1"
+    port: 8265
+
+  # Cluster initialization timeout (seconds)
+  init_timeout_seconds: 60
+
+  # Worker node configuration
+  worker:
+    # Heartbeat interval for failure detection (seconds)
+    heartbeat_interval_seconds: 5
+
+    # Timeout before declaring worker as lost (seconds)
+    heartbeat_timeout_seconds: 30
+
+    # Number of retry attempts for reassigning failed tasks
+    task_retry_attempts: 3
+
+    # Delay between retry attempts (seconds)
+    retry_delay_seconds: 2
+
+  # Zero-copy shared memory configuration
+  shared_memory:
+    enabled: true
+    # Maximum shared memory buffer size (bytes)
+    max_buffer_size: 536870912  # 512 MB

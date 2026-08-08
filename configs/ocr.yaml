@@ -1,0 +1,44 @@
+# =============================================================
+# ocr.yaml — Document Processing Engine Configuration
+# Adaptive Distributed Framework v2.0
+# Phase 2 implementation — placeholder values for Phase 1
+# =============================================================
+
+document_processing_engine:
+  # OCR backend: "paddleocr" | "trocr" | "nougat" | "mineru" | "docling"
+  # Swappable without architectural change (see architecture v2.0)
+  ocr_backend: "paddleocr"
+
+  ocr:
+    # Language codes for OCR (ISO 639-1 or backend-specific codes)
+    languages: ["en"]
+
+    # Enable GPU acceleration if available
+    use_gpu: false
+
+    # Confidence threshold for accepting OCR results (0.0 – 1.0)
+    confidence_threshold: 0.85
+
+  layout_analysis:
+    enabled: true
+
+    # Layout model: "ppstructure" | "detectron2" | null (backend default)
+    model: "ppstructure"
+
+  table_extraction:
+    enabled: true
+
+    # Output format: "html" | "markdown" | "json"
+    output_format: "markdown"
+
+  figure_detection:
+    enabled: true
+
+    # Minimum figure area fraction of the page to retain
+    min_area_fraction: 0.01
+
+  # Per-page processing timeout (seconds)
+  page_timeout_seconds: 30
+
+  # Number of parallel threads for CPU-bound OCR operations
+  num_threads: 4

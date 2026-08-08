@@ -1,0 +1,53 @@
+# =============================================================
+# evaluation.yaml — Evaluation Engine Configuration
+# Adaptive Distributed Framework v2.0
+# =============================================================
+
+evaluation:
+  # Output directory for evaluation reports (relative to framework output_dir)
+  output_dir: "evaluation_results"
+
+  # Report formats to generate
+  report_formats: ["json", "csv", "markdown"]
+
+  metrics:
+    speedup:
+      enabled: true
+      # Baseline: single-node run used as denominator
+      baseline_nodes: 1
+
+    throughput:
+      enabled: true
+      # Unit: pages per second
+      unit: "pages_per_second"
+
+    cpu_utilization:
+      enabled: true
+      # Sampling interval (seconds)
+      sample_interval_seconds: 1.0
+
+    gpu_utilization:
+      enabled: true
+      sample_interval_seconds: 1.0
+
+    energy_consumption:
+      enabled: true
+      # Energy measurement tool: "rapl" | "nvidia_smi" | "psutil" | "estimated"
+      measurement_tool: "estimated"
+
+    scheduler_overhead:
+      enabled: true
+      # Formula: scheduler_time / total_execution_time * 100
+      # Target: < 1% (architecture spec §4.2)
+      target_max_percent: 1.0
+
+      # Emit WARNING log if overhead exceeds target
+      warn_on_exceed: true
+
+  # Benchmarking configuration
+  benchmark:
+    # Number of warm-up runs before recording results
+    warmup_runs: 1
+
+    # Number of measurement runs to average
+    measurement_runs: 3
