@@ -1,4 +1,4 @@
-"""log_panel.py — Cluster Logs panel for the Engineering Dashboard."""
+"""log_panel.py -- Cluster Logs panel for the Engineering Dashboard."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def render_log_panel(state: dict[str, Any]) -> None:
     Args:
         state: Current DashboardStateStore snapshot dictionary.
     """
-    st.markdown("## 📝 Cluster Logs")
+    st.markdown("## Cluster Logs")
 
     heartbeat_events: list[dict[str, Any]] = state.get("heartbeat_events", [])
     recovery_events: list[dict[str, Any]] = state.get("recovery_events", [])
@@ -40,20 +40,22 @@ def render_log_panel(state: dict[str, Any]) -> None:
             "category": "RECOVERY",
             "type": evt.get("event_type", ""),
             "worker": evt.get("worker_id", "")[:12],
+            "worker": evt.get("worker_id", ""),
             "message": evt.get("message", ""),
         })
 
     for evt in steal_events:
+        src_full = evt.get("source_worker_id", "")
+        dst_full = evt.get("destination_worker_id", "")
         all_events.append({
             "ts": evt.get("timestamp", ""),
             "category": "STEAL",
             "type": "work_steal",
-            "worker": evt.get("source_worker_id", "")[:8]
-                       + "→" + evt.get("destination_worker_id", "")[:8],
+            "worker": f"{src_full} -> {dst_full}",
             "message": (
                 f"Stole {evt.get('tasks_stolen', 0)} task(s) "
-                f"from {evt.get('source_worker_id', '')[:8]} "
-                f"to {evt.get('destination_worker_id', '')[:8]}"
+                f"from {src_full} "
+                f"to {dst_full}"
             ),
         })
 
@@ -64,7 +66,7 @@ def render_log_panel(state: dict[str, Any]) -> None:
         st.info("No events yet. The cluster log will populate as the framework runs.")
         return
 
-    # ── Filter controls ─────────────────────────────────────────────────
+    # -- Filter controls ----------------------------------------------------
     categories = ["ALL", "HEARTBEAT", "RECOVERY", "STEAL"]
     selected = st.selectbox("Filter by category", categories, index=0)
 
@@ -73,29 +75,29 @@ def render_log_panel(state: dict[str, Any]) -> None:
 
     st.caption(f"Showing {len(display_events)} event(s) (newest first)")
 
-    # ── Log entries ─────────────────────────────────────────────────────
+    # -- Log entries --------------------------------------------------------
     _cat_colors = {
         "HEARTBEAT": "#1a73e8",
         "RECOVERY": "#ea4335",
         "STEAL": "#fbbc04",
     }
-    _type_icons = {
-        "alive": "💚",
-        "timeout": "⏰",
-        "disconnected": "💀",
-        "reconnected": "🔄",
-        "worker_lost": "💀",
-        "tasks_recovered": "♻️",
-        "worker_recovered": "✅",
-        "retry_scheduled": "🔁",
-        "retry_exhausted": "❌",
-        "work_steal": "🔀",
+    _type_labels = {
+        "alive": "[OK]",
+        "timeout": "[TIMEOUT]",
+        "disconnected": "[DISC]",
+        "reconnected": "[RECONNECT]",
+        "worker_lost": "[LOST]",
+        "tasks_recovered": "[RECOVERED]",
+        "worker_recovered": "[OK]",
+        "retry_scheduled": "[RETRY]",
+        "retry_exhausted": "[FAILED]",
+        "work_steal": "[STEAL]",
     }
 
     for evt in display_events:
         cat = evt["category"]
         etype = evt["type"]
-        icon = _type_icons.get(etype, "•")
+        label = _type_labels.get(etype, "[?]")
         color = _cat_colors.get(cat, "#888")
         ts_short = evt["ts"][:19]
         worker = evt["worker"]
@@ -106,7 +108,7 @@ def render_log_panel(state: dict[str, Any]) -> None:
             f"border-left: 3px solid {color}; padding-left: 8px; margin-bottom: 4px;'>"
             f"<span style='color: #888;'>{ts_short}</span> "
             f"<span style='color: {color}; font-weight: bold;'>[{cat}]</span> "
-            f"{icon} <span style='color: #ccc;'>{worker}</span> — {msg}"
+            f"{label} <span style='color: #ccc;'>{worker}</span> -- {msg}"
             f"</div>",
             unsafe_allow_html=True,
         )

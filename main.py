@@ -124,7 +124,7 @@ def main() -> int:
     print(f"  Run ID  : {run_id}")
     print(f"  Node    : {platform_info['hostname']}")
     print()
-    print("  ✅ Framework Initialized Successfully")
+    print("  [OK] Framework Initialized Successfully")
     print("=" * 60)
     print()
 

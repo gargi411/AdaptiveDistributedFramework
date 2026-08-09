@@ -35,13 +35,16 @@ from pathlib import Path
 
 import streamlit as st
 
-# ── Resolve project root for imports ───────────────────────────────────
+# -- Resolve project root for imports ---------------------------------------
 _DASHBOARD_DIR = Path(__file__).parent
 _PROJECT_ROOT = _DASHBOARD_DIR.parent
-if str(_PROJECT_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 
-# ── Dashboard components ────────────────────────────────────────────────
+# Insert project root so `from dashboard.components.xxx` resolves,
+# and insert src/ so adaptive_framework imports also resolve.
+sys.path.insert(0, str(_PROJECT_ROOT))
+sys.path.insert(0, str(_PROJECT_ROOT / "src"))
+
+# -- Dashboard components ---------------------------------------------------
 from dashboard.components.cluster_overview import render_cluster_overview
 from dashboard.components.dataset_panel import render_dataset_panel
 from dashboard.components.worker_panel import render_worker_panel
@@ -53,27 +56,27 @@ from dashboard.components.log_panel import render_log_panel
 from dashboard.components.performance_charts import render_performance_charts
 from dashboard.state.dashboard_state import DashboardStateStore
 
-# ── Constants ───────────────────────────────────────────────────────────
+# -- Constants --------------------------------------------------------------
 REFRESH_INTERVAL_SECONDS: float = 3.0
 DEFAULT_STATE_FILE: str = "outputs/dashboard_state.json"
 FRAMEWORK_VERSION: str = "2.0.0"
 
-# ── Page config ─────────────────────────────────────────────────────────
+# -- Page config ------------------------------------------------------------
 st.set_page_config(
     page_title="ADF Engineering Dashboard",
-    page_icon="⚡",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
         "Get Help": "https://github.com/your-org/adaptive-distributed-framework",
         "About": (
             "Adaptive Distributed Parallel Processing Framework v2.0\n"
-            "Engineering Monitoring Dashboard — Phase 2B"
+            "Engineering Monitoring Dashboard - Phase 3.5"
         ),
     },
 )
 
-# ── Custom CSS (dark, Kubernetes-inspired) ──────────────────────────────
+# -- Custom CSS (dark, Kubernetes-inspired) ---------------------------------
 st.markdown(
     """
     <style>
@@ -119,7 +122,7 @@ st.markdown(
 )
 
 
-# ── Sidebar ─────────────────────────────────────────────────────────────
+# -- Sidebar ----------------------------------------------------------------
 
 def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
     """Render sidebar controls and return active section configuration.
@@ -132,12 +135,12 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
         Dict of display settings from sidebar controls.
     """
     with st.sidebar:
-        st.markdown("# ⚡ ADF Dashboard")
+        st.markdown("# ADF Dashboard")
         st.markdown(f"**Version:** `{FRAMEWORK_VERSION}`")
 
         cm = state.get("cluster_manager", {})
         mode = cm.get("mode", "dev")
-        mode_label = "🖥️ DEV (Single Laptop)" if mode == "dev" else "🌐 PRESENTATION (3 Laptops)"
+        mode_label = "DEV (Single Laptop)" if mode == "dev" else "PRESENTATION (3 Laptops)"
         st.info(f"**Cluster Mode:** {mode_label}")
 
         st.divider()
@@ -181,14 +184,14 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
 
         st.divider()
         st.markdown("**Cluster Info**")
-        st.text(f"Run ID: {state.get('run_id', '—')}")
+        st.text(f"Run ID: {state.get('run_id', '-')}")
         uptime = state.get("uptime_seconds", 0.0)
         h, rem = divmod(int(uptime), 3600)
         m, s = divmod(rem, 60)
         st.text(f"Uptime: {h}h {m:02d}m {s:02d}s")
         last_updated = store.last_updated_seconds_ago
         if last_updated == float("inf"):
-            st.text("Last Update: —")
+            st.text("Last Update: -")
         else:
             st.text(f"Last Update: {last_updated:.1f}s ago")
 
@@ -196,7 +199,7 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
         if ts:
             st.text(f"Timestamp: {ts[:19]}")
 
-        if st.button("🔄 Force Refresh", use_container_width=True):
+        if st.button("Force Refresh", use_container_width=True):
             st.rerun()
 
     return {
@@ -206,7 +209,7 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
     }
 
 
-# ── State loading ────────────────────────────────────────────────────────
+# -- State loading ----------------------------------------------------------
 
 @st.cache_resource
 def _get_store(state_file: str) -> DashboardStateStore:
@@ -227,6 +230,10 @@ def _get_store(state_file: str) -> DashboardStateStore:
 def _load_state_from_file(store: DashboardStateStore, state_file: str) -> None:
     """Reload state from JSON file if it has been updated.
 
+    Restores chart histories from the ``_chart_history`` key so the
+    Performance Graphs panel shows the full run history, not just the
+    current (post-run zero) snapshot.
+
     Args:
         store: The DashboardStateStore to update.
         state_file: Path to state JSON file.
@@ -237,48 +244,63 @@ def _load_state_from_file(store: DashboardStateStore, state_file: str) -> None:
     try:
         with path.open(encoding="utf-8") as f:
             data = json.load(f)
-        store.update(data)
+        # Restore full chart history if pipeline wrote it
+        ch = data.get("_chart_history", {})
+        if ch:
+            with store._lock:  # type: ignore[attr-defined]
+                store._cpu_history = [float(x) for x in ch.get("cpu", [])]  # type: ignore[attr-defined]
+                store._ram_history = [float(x) for x in ch.get("ram", [])]  # type: ignore[attr-defined]
+                store._queue_history = [int(x) for x in ch.get("queue", [])]  # type: ignore[attr-defined]
+                store._throughput_history = [float(x) for x in ch.get("throughput", [])]  # type: ignore[attr-defined]
+                store._data = data  # type: ignore[attr-defined]
+                store._last_updated = time.monotonic()  # type: ignore[attr-defined]
+        else:
+            store.update(data)
     except Exception:
         pass
 
 
-# ── Main ────────────────────────────────────────────────────────────────
+# -- Main ------------------------------------------------------------------
 
 def main() -> None:
     """Main dashboard entrypoint."""
-    # ── Parse CLI args ─────────────────────────────────────────────────
+    # -- Parse CLI args -------------------------------------------------------
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--state-file", default=DEFAULT_STATE_FILE)
     args, _ = parser.parse_known_args()
     state_file = args.state_file
 
-    # ── Load state store ───────────────────────────────────────────────
+    # -- Load state store -----------------------------------------------------
     store = _get_store(state_file)
     _load_state_from_file(store, state_file)
     state = store.get()
 
-    # ── Sidebar ────────────────────────────────────────────────────────
+    # -- Sidebar --------------------------------------------------------------
     cfg = _render_sidebar(store, state)
     sections = cfg["sections"]
     auto_refresh = cfg["auto_refresh"]
     refresh_interval = cfg["refresh_interval"]
 
-    # ── Page title ─────────────────────────────────────────────────────
+    # -- Page title -----------------------------------------------------------
     fw_state = state.get("framework_state", "initializing")
-    health_icon = "🟢" if fw_state in ("ready", "running") else "🟠" if fw_state == "degraded" else "🔴"
+    health_label = (
+        "[RUNNING]" if fw_state in ("ready", "running")
+        else "[DEGRADED]" if fw_state == "degraded"
+        else "[STOPPED]"
+    )
     st.markdown(
         f"<h1 style='color:#e6edf3; font-size:1.6rem; margin-bottom:0;'>"
-        f"⚡ Adaptive Distributed Framework — Engineering Dashboard "
-        f"{health_icon}"
+        f"Adaptive Distributed Framework -- Engineering Dashboard "
+        f"<span style='font-size:0.9rem; color:#888;'>{health_label}</span>"
         f"</h1>",
         unsafe_allow_html=True,
     )
     st.caption(
-        f"Version {FRAMEWORK_VERSION} | Phase 2B | "
+        f"Version {FRAMEWORK_VERSION} | Phase 3.5 | "
         f"Mode: `{state.get('cluster_manager', {}).get('mode', 'dev').upper()}`"
     )
 
-    # ── Render sections ────────────────────────────────────────────────
+    # -- Render sections ------------------------------------------------------
     if "Cluster Overview" in sections:
         render_cluster_overview(state)
         st.divider()
@@ -329,7 +351,7 @@ def main() -> None:
     if "Cluster Logs" in sections:
         render_log_panel(state)
 
-    # ── Auto-refresh ───────────────────────────────────────────────────
+    # -- Auto-refresh ---------------------------------------------------------
     if auto_refresh:
         time.sleep(refresh_interval)
         st.rerun()

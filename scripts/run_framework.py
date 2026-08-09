@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """run_framework.py — Framework execution entry point script.
 
 Delegates to main.py. Provides a script-based entry point with
@@ -44,10 +44,10 @@ def main() -> int:
         cfg.load(config_dir=Path(args.config_dir))
         print(f"  Configuration loaded from '{args.config_dir}/'")
     except ConfigurationError as exc:
-        print(f"  ❌ Configuration error: {exc}")
+        print(f"  [FAIL] Configuration error: {exc}")
         return 1
 
-    print("  ✅ Framework ready.")
+    print("  [OK] Framework ready.")
     return 0
 
 

@@ -132,10 +132,10 @@ class ClusterBenchmarkResult:
         Returns:
             Multi-line string with all key metrics.
         """
-        overhead_flag = "✅" if self.meets_overhead_target else "❌"
+        overhead_flag = "[OK]" if self.meets_overhead_target else "[WARN]"
         lines = [
             "=" * 65,
-            f"  CLUSTER BENCHMARK REPORT — Run: {self.run_id}",
+            f"  CLUSTER BENCHMARK REPORT - Run: {self.run_id}",
             "=" * 65,
             f"  Mode              : {self.mode}",
             f"  Workers           : {self.num_workers} ({self.num_nodes} node(s))",

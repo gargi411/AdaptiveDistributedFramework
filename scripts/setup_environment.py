@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """setup_environment.py — Development environment setup script.
 
 Guides the developer through installing dependencies and setting up
@@ -25,16 +25,16 @@ def run_command(cmd: list[str], description: str) -> bool:
     Returns:
         True on success, False on failure.
     """
-    print(f"  ▶ {description}...")
+    print(f"  > {description}...")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"    ✅ Done.")
+        print(f"    [OK] Done.")
         return True
     except subprocess.CalledProcessError as exc:
-        print(f"    ❌ Failed: {exc.stderr.strip()}")
+        print(f"    [FAIL] Failed: {exc.stderr.strip()}")
         return False
     except FileNotFoundError:
-        print(f"    ❌ Command not found: {cmd[0]}")
+        print(f"    [FAIL] Command not found: {cmd[0]}")
         return False
 
 
@@ -59,15 +59,15 @@ def main() -> int:
         [sys.executable, "-m", "pre_commit", "install"],
         "Installing pre-commit hooks"
     ):
-        print("    ⚠️  pre-commit not installed — run 'pip install pre-commit' first.")
+        print("    [WARN] pre-commit not installed — run 'pip install pre-commit' first.")
 
     print()
     print("=" * 60)
     if failures:
-        print(f"  ❌ Setup incomplete — {len(failures)} step(s) failed.")
+        print(f"  [FAIL] Setup incomplete — {len(failures)} step(s) failed.")
         return 1
     else:
-        print("  ✅ Setup complete.")
+        print("  [OK] Setup complete.")
         print()
         print("  Next steps:")
         print("    1. python scripts/check_environment.py")

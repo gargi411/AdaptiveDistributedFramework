@@ -39,6 +39,7 @@ dependencies = [
     # Document processing engine — PDF rendering and array ops
     "pymupdf>=1.24.0",
     "numpy>=1.26.0",
+    "streamlit>=1.60.0",
 ]
 
 [project.optional-dependencies]

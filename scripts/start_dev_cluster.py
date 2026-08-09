@@ -161,6 +161,8 @@ def _run_processing_loop(
     worker_ids: list[str],
     run_id: str,
     num_workers: int,
+    proc_stats: dict,
+    proc_stats_lock: threading.Lock,
 ) -> None:
     """Background thread: drain the priority queue and process every work unit.
 
@@ -170,12 +172,17 @@ def _run_processing_loop(
     a document are assembled the UnifiedDocumentBuilder produces a
     UnifiedDocument which is stored back in the DocumentRegistry.
 
+    Writes dispatch/completion counts into proc_stats (thread-safe) so the
+    monitoring loop can merge them into the dashboard state dict.
+
     Args:
         coordinator: Active DistributedCoordinator holding the global queue.
         doc_registry: DocumentRegistry to update status and store results.
         worker_ids: Registered simulated worker IDs (round-robin assignment).
         run_id: Pipeline run identifier passed to UnifiedDocumentBuilder.
         num_workers: Number of simulated workers.
+        proc_stats: Shared dict for dashboard sync (mutated under proc_stats_lock).
+        proc_stats_lock: Lock protecting proc_stats.
     """
     # One worker instance per worker_id, stored as (id, worker) pairs
     worker_pairs: list[tuple[str, DocumentProcessingWorker]] = [
@@ -199,7 +206,7 @@ def _run_processing_loop(
         wu = coordinator.pop_work_unit()
 
         if wu is None:
-            # Queue empty — check if all docs are done
+            # Queue empty -- check if all docs are done
             if coordinator.queue_size() == 0 and processed_units > 0:
                 # Flush any remaining accumulated pages
                 _flush_completed_docs(
@@ -245,6 +252,11 @@ def _run_processing_loop(
             flush=True,
         )
 
+        # Count dispatch in shared stats
+        with proc_stats_lock:
+            proc_stats["total_dispatched"] += 1
+            proc_stats["currently_active"] += 1
+
         t0 = time.perf_counter()
         result = worker.process_work_unit(wu)
         elapsed = time.perf_counter() - t0
@@ -252,11 +264,24 @@ def _run_processing_loop(
         if result.success:
             pages_by_doc[doc_id].extend(result.pages)
             print(f"done  ({elapsed:.2f}s,  {result.pages_succeeded} pages)")
+            with proc_stats_lock:
+                proc_stats["total_completed"] += 1
+                proc_stats["currently_active"] = max(
+                    0, proc_stats["currently_active"] - 1
+                )
+                proc_stats["per_worker_completed"][wid] = (
+                    proc_stats["per_worker_completed"].get(wid, 0) + 1
+                )
         else:
             print(f"FAILED  ({result.error})")
             logger.warning(
                 "Work unit failed for doc '%s': %s", doc_id[:8], result.error
             )
+            with proc_stats_lock:
+                proc_stats["total_failed"] += 1
+                proc_stats["currently_active"] = max(
+                    0, proc_stats["currently_active"] - 1
+                )
 
         processed_units += 1
 
@@ -449,10 +474,23 @@ def main() -> None:
     summary_table = PartitionSummary(partitions, part_stats)
     print(summary_table.format_table())
 
+    # ── Shared processing stats (written by proc thread, read by monitor loop)
+    _proc_stats: dict = {
+        "total_dispatched": 0,
+        "total_completed": 0,
+        "total_failed": 0,
+        "currently_active": 0,
+        "per_worker_completed": {},
+    }
+    _proc_stats_lock = threading.Lock()
+
     # ── Start processing in background thread ───────────────────────────
     proc_thread = threading.Thread(
         target=_run_processing_loop,
-        args=(coordinator, doc_registry, worker_ids, run_id, num_workers),
+        args=(
+            coordinator, doc_registry, worker_ids, run_id, num_workers,
+            _proc_stats, _proc_stats_lock,
+        ),
         daemon=True,
         name="processing-loop",
     )
@@ -469,7 +507,33 @@ def main() -> None:
         status = coordinator.get_status_dict()
         registry_recs = coordinator.registry
         workers_list = [rec.to_dict() for rec in registry_recs.get_all()]
+
+        # -- Inject real per-worker completed counts from processing loop --
+        with _proc_stats_lock:
+            stats_snapshot = dict(_proc_stats)
+            per_worker = dict(stats_snapshot["per_worker_completed"])
+        for w in workers_list:
+            wid = w.get("worker_id", "")
+            w["total_completed"] = per_worker.get(wid, 0)
+
         status["workers"] = workers_list
+
+        # -- Merge real dispatch/completion counts into dispatcher dict ----
+        disp = status.setdefault("dispatcher", {})
+        disp["total_dispatched"] = stats_snapshot["total_dispatched"]
+        disp["total_completed"] = stats_snapshot["total_completed"]
+        disp["total_failed"] = stats_snapshot["total_failed"]
+        disp["currently_active"] = stats_snapshot["currently_active"]
+        disp["queue_size"] = coordinator.queue_size()
+        status["queue_size"] = coordinator.queue_size()
+
+        # -- Populate steal_events list from work-stealing coordinator ----
+        ws_coordinator = getattr(coordinator, "_work_stealing", None)
+        if ws_coordinator is not None:
+            recent = ws_coordinator.get_recent_steal_events(n=30)
+            status["steal_events"] = [e.to_dict() for e in recent]
+        else:
+            status["steal_events"] = []
 
         # Live dataset summary from DocumentRegistry (updates as docs complete)
         reg_summary = doc_registry.summary()
@@ -485,6 +549,7 @@ def main() -> None:
             f"Idle: {reg_stats.get('idle_workers', 0)} | "
             f"CPU: {reg_stats.get('avg_cpu_percent', 0):.1f}% | "
             f"Queue: {coordinator.queue_size()} | "
+            f"Dispatched: {stats_snapshot['total_dispatched']} | "
             f"Completed: {dataset_summary.get('completed', 0)}/{dataset_summary.get('total_pdfs', 0)} | "
             f"Pages: {dataset_summary.get('total_pages', 0)}",
             end="",
@@ -511,6 +576,30 @@ def main() -> None:
     if result:
         print(result.format_summary())
     print("[ADF] Dev cluster stopped.")
+
+    # -- Final state flush so dashboard JSON shows completed run -----------
+    with _proc_stats_lock:
+        final_stats = dict(_proc_stats)
+        final_per_worker = dict(final_stats["per_worker_completed"])
+    final_status = coordinator.get_status_dict()
+    final_workers = [rec.to_dict() for rec in coordinator.registry.get_all()]
+    for w in final_workers:
+        wid = w.get("worker_id", "")
+        w["total_completed"] = final_per_worker.get(wid, 0)
+    final_status["workers"] = final_workers
+    final_disp = final_status.setdefault("dispatcher", {})
+    final_disp["total_dispatched"] = final_stats["total_dispatched"]
+    final_disp["total_completed"] = final_stats["total_completed"]
+    final_disp["total_failed"] = final_stats["total_failed"]
+    final_disp["currently_active"] = 0
+    final_disp["queue_size"] = 0
+    final_status["queue_size"] = 0
+    final_status["steal_events"] = [
+        e.to_dict()
+        for e in coordinator._work_stealing.get_recent_steal_events(n=30)
+    ]
+    final_status["dataset_summary"] = doc_registry.summary().to_dict()
+    state_store.update(final_status)
 
     # ── Final summary ───────────────────────────────────────────────────
     final = doc_registry.summary()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """check_environment.py — Environment verification script.
 
 Checks that all required dependencies, Python version, and
@@ -24,7 +24,7 @@ def check_python_version() -> bool:
     """Verify Python >= 3.12."""
     major, minor = sys.version_info.major, sys.version_info.minor
     ok = (major, minor) >= (3, 12)
-    status = "✅" if ok else "❌"
+    status = "[OK]" if ok else "[FAIL]"
     print(f"  {status} Python {major}.{minor} (required: 3.12+)")
     return ok
 
@@ -33,10 +33,10 @@ def check_package(package: str, required: bool = True) -> bool:
     """Check whether a Python package is importable."""
     try:
         importlib.import_module(package)
-        print(f"  ✅ {package}")
+        print(f"  [OK] {package}")
         return True
     except ImportError:
-        symbol = "❌" if required else "⚠️ "
+        symbol = "[FAIL]" if required else "[WARN] "
         note = "(required)" if required else "(optional)"
         print(f"  {symbol} {package} — NOT FOUND {note}")
         return not required  # optional packages don't fail the check
@@ -45,7 +45,7 @@ def check_package(package: str, required: bool = True) -> bool:
 def check_directory(path: Path, name: str) -> bool:
     """Check whether a required directory exists."""
     ok = path.is_dir()
-    status = "✅" if ok else "❌"
+    status = "[OK]" if ok else "[FAIL]"
     print(f"  {status} {name}: {path}")
     return ok
 
@@ -61,7 +61,7 @@ def check_config_files() -> bool:
     for filename in required:
         path = config_dir / filename
         ok = path.exists()
-        status = "✅" if ok else "❌"
+        status = "[OK]" if ok else "[FAIL]"
         print(f"  {status} configs/{filename}")
         if not ok:
             all_ok = False
@@ -78,13 +78,13 @@ def main() -> int:
     failures: list[str] = []
 
     # Python version
-    print("▶ Python Version")
+    print("> Python Version")
     if not check_python_version():
         failures.append("Python version")
     print()
 
     # Required packages
-    print("▶ Required Packages")
+    print("> Required Packages")
     required_pkgs = ["yaml", "psutil", "rich"]
     for pkg in required_pkgs:
         if not check_package(pkg):
@@ -92,14 +92,14 @@ def main() -> int:
     print()
 
     # Optional packages (Phase 2+)
-    print("▶ Optional Packages (Phase 2+)")
+    print("> Optional Packages (Phase 2+)")
     optional_pkgs = ["ray", "paddleocr", "langchain", "chromadb"]
     for pkg in optional_pkgs:
         check_package(pkg, required=False)
     print()
 
     # Directory structure
-    print("▶ Directory Structure")
+    print("> Directory Structure")
     dirs = {
         "configs/": Path("configs"),
         "src/adaptive_framework/": Path("src/adaptive_framework"),
@@ -112,7 +112,7 @@ def main() -> int:
     print()
 
     # Config files
-    print("▶ Configuration Files")
+    print("> Configuration Files")
     if not check_config_files():
         failures.append("config files")
     print()
@@ -120,14 +120,14 @@ def main() -> int:
     # Summary
     print("=" * 60)
     if failures:
-        print(f"  ❌ FAILED — {len(failures)} issue(s) found:")
+        print(f"  [FAIL] FAILED — {len(failures)} issue(s) found:")
         for f in failures:
             print(f"     • {f}")
         print()
         print("  Fix the above issues before running the framework.")
         return 1
     else:
-        print("  ✅ All checks passed. Environment is ready.")
+        print("  [OK] All checks passed. Environment is ready.")
         return 0
 
 

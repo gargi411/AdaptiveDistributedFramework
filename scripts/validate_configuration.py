@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """validate_configuration.py — Configuration validation script.
 
 Loads all YAML configuration files and validates them through
@@ -42,9 +42,9 @@ def validate_all(config_dir: Path) -> int:
 
     try:
         cfg.load(config_dir=config_dir)
-        print("  ✅ YAML files loaded successfully.")
+        print("  [OK] YAML files loaded successfully.")
     except ConfigurationError as exc:
-        print(f"  ❌ Failed to load configs: {exc}")
+        print(f"  [FAIL] Failed to load configs: {exc}")
         return 1
 
     sections: list[tuple[str, object]] = []
@@ -60,28 +60,28 @@ def validate_all(config_dir: Path) -> int:
         ("rag.yaml          → RAGConfig", cfg.get_rag_config),
     ]
 
-    print("▶ Validating configuration sections:")
+    print("> Validating configuration sections:")
     for label, getter in checks:
         try:
             result = getter()
-            print(f"  ✅ {label}")
+            print(f"  [OK] {label}")
             sections.append((label, result))
         except ConfigurationError as exc:
-            print(f"  ⚠️  {label} — MISSING or INVALID (skipped): {exc}")
+            print(f"  [WARN] {label} — MISSING or INVALID (skipped): {exc}")
         except Exception as exc:
-            print(f"  ❌ {label} — ERROR: {exc}")
+            print(f"  [FAIL] {label} — ERROR: {exc}")
             errors.append((label, str(exc)))
 
     print()
     print("=" * 60)
     if errors:
-        print(f"  ❌ Validation FAILED — {len(errors)} error(s):")
+        print(f"  [FAIL] Validation FAILED — {len(errors)} error(s):")
         for label, err in errors:
             print(f"     • {label}: {err}")
         return 1
     else:
         loaded_count = len(sections)
-        print(f"  ✅ Validation PASSED — {loaded_count}/{len(checks)} sections validated.")
+        print(f"  [OK] Validation PASSED — {loaded_count}/{len(checks)} sections validated.")
         print()
         print("  All loaded configuration sections:")
         for label, _ in sections:

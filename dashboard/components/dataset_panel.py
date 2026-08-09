@@ -1,4 +1,4 @@
-"""Dataset Health Panel — Streamlit component for Phase 3.5.
+"""Dataset Health Panel -- Streamlit component for Phase 3.5.
 
 Renders a two-column dataset health summary sourced from the
 ``dataset_summary`` key in the dashboard state dictionary. This key is
@@ -22,17 +22,17 @@ def render_dataset_panel(state: dict[str, Any]) -> None:
     """Render the Dataset Health section.
 
     Displays two columns of metrics:
-        Left  — dataset composition (PDFs, pages, source types)
-        Right — pipeline progress (queue, completed, failed, averages)
+        Left  -- dataset composition (PDFs, pages, source types)
+        Right -- pipeline progress (queue, completed, failed, averages)
 
     Args:
         state: Current dashboard state dictionary from ``DashboardStateStore``.
     """
     ds: dict[str, Any] = state.get("dataset_summary", {})
 
-    st.markdown("## 📄 Dataset Health")
+    st.markdown("## Dataset Health")
 
-    # ── Top status bar ──────────────────────────────────────────────────
+    # -- Top status bar -----------------------------------------------------
     total_pdfs = ds.get("total_pdfs", 0)
     total_pages = ds.get("total_pages", 0)
     metadata_cached = ds.get("metadata_cached", False)
@@ -41,7 +41,7 @@ def render_dataset_panel(state: dict[str, Any]) -> None:
         st.info("No dataset loaded yet. Run `python -m scripts.start_dev_cluster` to begin.")
         return
 
-    cache_badge = "✅ Cached" if metadata_cached else "🔄 Extracted"
+    cache_badge = "Cached" if metadata_cached else "Extracted"
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
@@ -53,7 +53,7 @@ def render_dataset_panel(state: dict[str, Any]) -> None:
 
     st.divider()
 
-    # ── Two-column detail breakdown ─────────────────────────────────────
+    # -- Two-column detail breakdown ----------------------------------------
     left, right = st.columns(2)
 
     with left:
@@ -98,9 +98,9 @@ def render_dataset_panel(state: dict[str, Any]) -> None:
             delta_color="inverse",
         )
 
-    # ── Progress bar ────────────────────────────────────────────────────
+    # -- Progress bar -------------------------------------------------------
     if total_pdfs > 0:
         progress = completed / total_pdfs
         st.divider()
-        st.markdown(f"**Processing Progress** — {completed}/{total_pdfs} documents completed")
+        st.markdown(f"**Processing Progress** -- {completed}/{total_pdfs} documents completed")
         st.progress(progress, text=f"{progress * 100:.1f}%")

@@ -234,7 +234,7 @@ class WorkStealingCoordinator:
         Returns:
             List of synthetic stolen task IDs (for event tracking).
         """
-        stolen_ids = [f"stolen_{i}_{source_id[:4]}→{dest_id[:4]}" for i in range(steal_count)]
+        stolen_ids = [f"stolen_{i}_{source_id[:4]}->{dest_id[:4]}" for i in range(steal_count)]
 
         # Update registry metadata
         self._registry.record_stolen_from(source_id, steal_count)
@@ -257,7 +257,7 @@ class WorkStealingCoordinator:
             self._total_tasks_stolen += steal_count
 
         logger.info(
-            "Work steal: %d task(s) from '%s' → '%s' (src_q=%d→%d).",
+            "Work steal: %d task(s) from '%s' -> '%s' (src_q=%d->%d).",
             steal_count,
             source_id[:8],
             dest_id[:8],

@@ -25,6 +25,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "ray", marker = "sys_platform != 'win32'" },
     { name = "rich" },
+    { name = "streamlit" },
 ]
 
 [package.optional-dependencies]
@@ -74,6 +75,7 @@ requires-dist = [
     { name = "ray", marker = "sys_platform != 'win32' and extra == 'ray'", specifier = ">=2.10.0" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
+    { name = "streamlit", specifier = ">=1.60.0" },
     { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.35.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12" },
 ]

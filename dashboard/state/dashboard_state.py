@@ -175,19 +175,27 @@ class DashboardStateStore:
             self._flush_to_file(data)
 
     def _flush_to_file(self, data: dict[str, Any]) -> None:
-        """Write state to JSON file (file-based mode).
+        """Write state plus chart histories to JSON file (file-based mode).
 
         Args:
             data: Current state dictionary.
         """
         try:
+            with self._lock:
+                payload = dict(data)
+                payload["_chart_history"] = {
+                    "cpu": list(self._cpu_history),
+                    "ram": list(self._ram_history),
+                    "queue": list(self._queue_history),
+                    "throughput": list(self._throughput_history),
+                }
             self._file_path.parent.mkdir(parents=True, exist_ok=True)  # type: ignore[union-attr]
             tmp = self._file_path.with_suffix(".tmp")  # type: ignore[union-attr]
             with tmp.open("w", encoding="utf-8") as f:
-                json.dump(data, f, default=str)
+                json.dump(payload, f, default=str)
             tmp.replace(self._file_path)  # type: ignore[arg-type]
         except Exception:
-            pass  # Best-effort — don't crash the coordinator
+            pass  # Best-effort -- don't crash the coordinator
 
     # ------------------------------------------------------------------ #
     # Read                                                                 #
@@ -242,6 +250,10 @@ class DashboardStateStore:
     def from_file(cls, file_path: str | Path) -> "DashboardStateStore":
         """Build a store and load initial state from a JSON file.
 
+        Restores chart histories from the ``_chart_history`` key written by
+        ``_flush_to_file`` so the Performance Graphs panel shows the full
+        processing history of the completed run.
+
         Args:
             file_path: Path to state JSON file.
 
@@ -256,6 +268,12 @@ class DashboardStateStore:
                     data = json.load(f)
                 with store._lock:
                     store._data = data
+                    # Restore chart histories from the persisted payload
+                    ch = data.get("_chart_history", {})
+                    store._cpu_history = [float(x) for x in ch.get("cpu", [])]
+                    store._ram_history = [float(x) for x in ch.get("ram", [])]
+                    store._queue_history = [int(x) for x in ch.get("queue", [])]
+                    store._throughput_history = [float(x) for x in ch.get("throughput", [])]
             except Exception:
                 pass
         return store

@@ -1,4 +1,4 @@
-"""task_queue_panel.py — Task Queue visualization for the Engineering Dashboard."""
+"""task_queue_panel.py -- Task Queue visualization for the Engineering Dashboard."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def render_task_queue_panel(state: dict[str, Any]) -> None:
     Args:
         state: Current DashboardStateStore snapshot dictionary.
     """
-    st.markdown("## 📋 Task Queue")
+    st.markdown("## Task Queue")
 
     dispatcher = state.get("dispatcher", {})
     queue_size = state.get("queue_size", 0)
@@ -32,20 +32,20 @@ def render_task_queue_panel(state: dict[str, Any]) -> None:
     failed = total_failed
     grand_total = max(pending + running + completed + failed, 1)
 
-    # ── Summary metrics ─────────────────────────────────────────────────
+    # -- Summary metrics ----------------------------------------------------
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.metric("⏳ Pending", pending)
+        st.metric("Pending", pending)
     with c2:
-        st.metric("⚡ Running", running)
+        st.metric("Running", running)
     with c3:
-        st.metric("✅ Completed", completed)
+        st.metric("Completed", completed)
     with c4:
-        st.metric("❌ Failed", failed)
+        st.metric("Failed", failed)
 
     st.divider()
 
-    # ── Progress bars ───────────────────────────────────────────────────
+    # -- Progress bars -------------------------------------------------------
     st.markdown("**Overall Progress**")
     if grand_total > 0:
         complete_frac = completed / grand_total
@@ -58,8 +58,8 @@ def render_task_queue_panel(state: dict[str, Any]) -> None:
                 text=f"Failed: {failed_frac*100:.1f}%",
             )
 
-    # ── Dispatcher statistics ───────────────────────────────────────────
-    with st.expander("📊 Dispatcher Statistics", expanded=True):
+    # -- Dispatcher statistics -----------------------------------------------
+    with st.expander("Dispatcher Statistics", expanded=True):
         cols = st.columns(3)
         with cols[0]:
             st.metric("Total Dispatched", total_dispatched)
@@ -70,7 +70,7 @@ def render_task_queue_panel(state: dict[str, Any]) -> None:
             history_size = dispatcher.get("history_size", 0)
             st.metric("History Records", history_size)
 
-    # ── Assignment history ──────────────────────────────────────────────
+    # -- Assignment history --------------------------------------------------
     assignments: list[dict[str, Any]] = state.get("assignment_history", [])
     if assignments:
         st.markdown("**Recent Assignments**")
@@ -79,11 +79,11 @@ def render_task_queue_panel(state: dict[str, Any]) -> None:
             rows.append({
                 "Work Unit": a.get("work_unit_id", "")[:12],
                 "Worker": a.get("worker_id", "")[:12],
-                "Pages": a.get("page_count", "—"),
-                "Status": a.get("status", "—").upper(),
+                "Pages": a.get("page_count", "-"),
+                "Status": a.get("status", "-").upper(),
                 "Retries": a.get("retry_count", 0),
                 "Elapsed (s)": f"{a.get('elapsed_seconds') or 0:.2f}",
-                "Assigned At": a.get("assigned_at", "—")[:19],
+                "Assigned At": a.get("assigned_at", "-")[:19],
             })
         if rows:
             import pandas as pd

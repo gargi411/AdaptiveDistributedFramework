@@ -1,4 +1,4 @@
-"""failure_panel.py — Failure Recovery panel for the Engineering Dashboard."""
+"""failure_panel.py -- Failure Recovery panel for the Engineering Dashboard."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def render_failure_panel(state: dict[str, Any]) -> None:
     Args:
         state: Current DashboardStateStore snapshot dictionary.
     """
-    st.markdown("## 🚨 Failure Recovery")
+    st.markdown("## Failure Recovery")
 
     rc_stats = state.get("failure_recovery", {})
     recovery_events: list[dict[str, Any]] = state.get("recovery_events", [])
@@ -27,7 +27,7 @@ def render_failure_panel(state: dict[str, Any]) -> None:
     workers_recovered = rc_stats.get("total_workers_recovered", 0)
     max_retries = rc_stats.get("max_retries", 3)
 
-    # ── Aggregate metrics ───────────────────────────────────────────────
+    # -- Aggregate metrics --------------------------------------------------
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.metric(
@@ -48,19 +48,23 @@ def render_failure_panel(state: dict[str, Any]) -> None:
             delta_color="off",
         )
 
-    # ── Recovery flow explanation ───────────────────────────────────────
-    with st.expander("📖 Recovery Flow (Architecture §2.3)", expanded=False):
+    # -- Recovery flow explanation ------------------------------------------
+    with st.expander("Recovery Flow (Architecture Section 2.3)", expanded=False):
         st.markdown(
             """
             ```
             Worker Lost (e.g. Laptop 2 disconnects)
-                    ↓
+                    |
+                    v
             Detect via Heartbeat Timeout
-                    ↓
+                    |
+                    v
             Return Unfinished Work Units
-                    ↓
+                    |
+                    v
             Re-insert into Priority Queue
-                    ↓
+                    |
+                    v
             Assign to Available Worker
             ```
             """
@@ -68,20 +72,20 @@ def render_failure_panel(state: dict[str, Any]) -> None:
 
     st.divider()
 
-    # ── Recovery event log ──────────────────────────────────────────────
+    # -- Recovery event log -------------------------------------------------
     if not recovery_events:
-        st.success("✅ No failure events recorded. All workers healthy.")
+        st.success("No failure events recorded. All workers healthy.")
         return
 
-    st.markdown(f"**Recovery Events** — {len(recovery_events)} total")
+    st.markdown(f"**Recovery Events** -- {len(recovery_events)} total")
 
-    _type_icons = {
-        "worker_lost": "💀",
-        "tasks_recovered": "♻️",
-        "worker_recovered": "✅",
-        "retry_scheduled": "🔁",
-        "retry_exhausted": "❌",
-        "graceful_shutdown": "🛑",
+    _type_labels = {
+        "worker_lost": "[LOST]",
+        "tasks_recovered": "[RECOVERED]",
+        "worker_recovered": "[OK]",
+        "retry_scheduled": "[RETRY]",
+        "retry_exhausted": "[FAILED]",
+        "graceful_shutdown": "[SHUTDOWN]",
     }
 
     rows = []
@@ -89,7 +93,7 @@ def render_failure_panel(state: dict[str, Any]) -> None:
         etype = evt.get("event_type", "unknown")
         rows.append({
             "Timestamp": evt.get("timestamp", "")[:19],
-            "Type": f"{_type_icons.get(etype, '⚪')} {etype.replace('_', ' ').title()}",
+            "Type": f"{_type_labels.get(etype, '[?]')} {etype.replace('_', ' ').title()}",
             "Worker": evt.get("worker_id", "")[:12],
             "Tasks Affected": len(evt.get("work_unit_ids", [])),
             "Retry #": evt.get("retry_count", 0),

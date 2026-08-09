@@ -1,4 +1,4 @@
-"""performance_charts.py — Real-time performance charts for the Engineering Dashboard.
+"""performance_charts.py -- Real-time performance charts for the Engineering Dashboard.
 
 Uses Plotly for rich, interactive charts rendered inside Streamlit.
 """
@@ -38,7 +38,7 @@ def render_performance_charts(
         queue_history: List of queue size values (oldest first).
         throughput_history: List of completed task counts (oldest first).
     """
-    st.markdown("## 📈 Performance Graphs")
+    st.markdown("## Performance Graphs")
 
     if not _PLOTLY_AVAILABLE:
         _render_fallback_charts(cpu_history, ram_history, queue_history, throughput_history)
@@ -66,7 +66,7 @@ def _render_plotly_charts(
     n = max(len(cpu_history), 1)
     x = list(range(n))
 
-    # ── Row 1: CPU + RAM ──────────────────────────────────────────────
+    # -- Row 1: CPU + RAM --------------------------------------------------
     col1, col2 = st.columns(2)
 
     with col1:
@@ -113,7 +113,7 @@ def _render_plotly_charts(
         )
         st.plotly_chart(fig_ram, use_container_width=True)
 
-    # ── Row 2: Queue Size + Throughput ───────────────────────────────
+    # -- Row 2: Queue Size + Throughput ------------------------------------
     col3, col4 = st.columns(2)
 
     with col3:
@@ -160,7 +160,7 @@ def _render_plotly_charts(
         )
         st.plotly_chart(fig_tp, use_container_width=True)
 
-    # ── Row 3: Worker Utilization Bar Chart ──────────────────────────
+    # -- Row 3: Worker Utilization Bar Chart --------------------------------
     workers: list[dict[str, Any]] = state.get("workers", [])
     if workers:
         st.markdown("**Worker Utilization Comparison**")

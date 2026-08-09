@@ -1,4 +1,4 @@
-"""cluster_overview.py — Cluster Overview panel for the Engineering Dashboard."""
+"""cluster_overview.py -- Cluster Overview panel for the Engineering Dashboard."""
 
 from __future__ import annotations
 
@@ -16,32 +16,32 @@ def render_cluster_overview(state: dict[str, Any]) -> None:
     Args:
         state: Current DashboardStateStore snapshot dictionary.
     """
-    st.markdown("## 🌐 Cluster Overview")
+    st.markdown("## Cluster Overview")
 
     registry = state.get("registry", {})
     cm = state.get("cluster_manager", {})
     framework_state = state.get("framework_state", "unknown")
     uptime = state.get("uptime_seconds", 0.0)
 
-    # ── Health indicator ────────────────────────────────────────────────
-    health_color = {
-        "ready": "🟢",
-        "running": "🟢",
-        "degraded": "🟠",
-        "initializing": "🔵",
-        "shutting_down": "🔴",
-        "stopped": "⚫",
-    }.get(framework_state, "⚪")
+    # -- Health indicator ---------------------------------------------------
+    health_label = {
+        "ready": "[OK]",
+        "running": "[RUNNING]",
+        "degraded": "[DEGRADED]",
+        "initializing": "[INIT]",
+        "shutting_down": "[STOPPING]",
+        "stopped": "[STOPPED]",
+    }.get(framework_state, "[UNKNOWN]")
 
     st.markdown(
-        f"**Framework State:** {health_color} `{framework_state.upper()}`"
+        f"**Framework State:** {health_label} `{framework_state.upper()}`"
         f"&nbsp;&nbsp;&nbsp;**Uptime:** `{_fmt_uptime(uptime)}`"
         f"&nbsp;&nbsp;&nbsp;**Mode:** `{cm.get('mode', 'dev').upper()}`"
     )
 
     st.divider()
 
-    # ── Metric cards ────────────────────────────────────────────────────
+    # -- Metric cards -------------------------------------------------------
     cols = st.columns(6)
 
     total_workers = registry.get("total_workers", 0)
@@ -55,7 +55,6 @@ def render_cluster_overview(state: dict[str, Any]) -> None:
         st.metric("Total Workers", total_workers)
 
     with cols[1]:
-        delta_active = active_workers - (total_workers - active_workers - idle_workers)
         st.metric("Active", active_workers, delta=f"{active_workers}/{total_workers}")
 
     with cols[2]:
@@ -75,23 +74,24 @@ def render_cluster_overview(state: dict[str, Any]) -> None:
     with cols[5]:
         st.metric("Avg RAM", f"{avg_ram:.1f}%")
 
-    # ── Head node card ─────────────────────────────────────────────────
+    # -- Head node card -----------------------------------------------------
     head = cm.get("head_node")
     if head:
-        with st.expander("🖥️ Head Node Details", expanded=False):
+        with st.expander("Head Node Details", expanded=False):
             hcols = st.columns(4)
             with hcols[0]:
-                st.write(f"**Hostname:** `{head.get('hostname', '—')}`")
-                st.write(f"**IP:** `{head.get('ip_address', '—')}`")
+                st.write(f"**Hostname:** `{head.get('hostname', '-')}`")
+                st.write(f"**IP:** `{head.get('ip_address', '-')}`")
             with hcols[1]:
-                st.write(f"**CPUs:** `{head.get('cpu_count_logical', '—')}`")
+                st.write(f"**CPUs:** `{head.get('cpu_count_logical', '-')}`")
                 st.write(f"**RAM:** `{head.get('ram_total_gb', 0):.1f} GB`")
             with hcols[2]:
                 st.write(f"**GPUs:** `{head.get('gpu_count', 0)}`")
-                st.write(f"**OS:** `{head.get('os_platform', '—')}`")
+                st.write(f"**OS:** `{head.get('os_platform', '-')}`")
             with hcols[3]:
                 st.write(f"**Node Uptime:** `{_fmt_uptime(cm.get('uptime_seconds', 0))}`")
-                st.write(f"**Ray Alive:** `{'Yes ✅' if cm.get('alive') else 'No ❌'}`")
+                alive_str = "Yes [OK]" if cm.get("alive") else "No [ERROR]"
+                st.write(f"**Ray Alive:** `{alive_str}`")
 
 
 def _fmt_uptime(seconds: float) -> str:
