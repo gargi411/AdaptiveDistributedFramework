@@ -70,6 +70,15 @@ def get_cpu_count(logical: bool = True) -> int:
     return count if count is not None else 1
 
 
+def get_cpu_physical_count() -> int:
+    """Return the number of physical CPU cores.
+
+    Returns:
+        Physical core count, or logical count / 1 if undetectable.
+    """
+    return get_cpu_count(logical=False)
+
+
 def get_available_memory_gb() -> float:
     """Return available system memory in gigabytes.
 
@@ -79,6 +88,22 @@ def get_available_memory_gb() -> float:
     if not _PSUTIL_AVAILABLE:
         return -1.0
     return psutil.virtual_memory().available / (1024 ** 3)
+
+
+def get_memory_breakdown_mb() -> tuple[float, float, float]:
+    """Return total, used, and available RAM in megabytes.
+
+    Returns:
+        Tuple of (total_mb, used_mb, available_mb).
+        Returns (-1.0, -1.0, -1.0) if psutil is unavailable.
+    """
+    if not _PSUTIL_AVAILABLE:
+        return (-1.0, -1.0, -1.0)
+    vm = psutil.virtual_memory()
+    total_mb = round(vm.total / (1024 * 1024), 2)
+    used_mb = round(vm.used / (1024 * 1024), 2)
+    available_mb = round(vm.available / (1024 * 1024), 2)
+    return (total_mb, used_mb, available_mb)
 
 
 def get_hostname() -> str:

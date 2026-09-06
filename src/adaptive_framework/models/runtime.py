@@ -64,49 +64,70 @@ class FrameworkState(str, Enum):
 
 @dataclass
 class ResourceSnapshot:
-    """Point-in-time system resource measurement for a single node.
+    """Point-in-time system resource measurement for a single node or cluster.
 
-    Captured periodically during a pipeline run for the evaluation engine.
+    Captured periodically during pipeline runs for monitoring and observability.
     All utilization values are in the range [0.0, 100.0] (percent).
+    Optional metrics are None when telemetry is unsupported or unavailable.
 
     Attributes:
         node_id: Identifier of the node this snapshot was taken from.
-        timestamp: ISO 8601 timestamp of the measurement.
         cpu_percent: CPU utilization across all cores (%).
         memory_percent: RAM utilization (%).
-        gpu_percent: GPU utilization (%). None if no GPU present.
-        gpu_memory_percent: GPU memory utilization (%). None if no GPU.
+        timestamp: ISO 8601 UTC timestamp of the measurement.
+        cpu_count: Total logical CPU cores on the host.
+        ram_used_mb: Currently used system RAM in megabytes.
+        ram_available_mb: Available system RAM in megabytes.
+        gpu_available: True if a GPU is detected and available.
+        gpu_name: Human-readable GPU device name (e.g. Intel Iris Xe).
+        gpu_device: OpenVINO execution device ID (e.g. 'GPU', 'GPU.0').
+        gpu_utilization_percent: GPU engine utilization (%). None if unavailable.
+        gpu_percent: Alias for gpu_utilization_percent for backward compatibility.
+        gpu_memory_used_mb: GPU memory used (MB). None if unavailable.
+        gpu_memory_total_mb: GPU total memory (MB). None if unavailable.
+        gpu_memory_percent: GPU memory utilization (%). None if unavailable.
+        gpu_temperature_c: GPU temperature in Celsius. None if unavailable.
+        gpu_power_w: GPU power consumption in Watts. None if unavailable.
+        queue_length: In-flight or pending task queue depth.
+        active_workers: Number of active worker processes.
+        ocr_latency_ms: Recent OCR inference latency in ms if measured.
+        ocr_throughput_pages_s: Recent OCR throughput in pages/sec if measured.
         disk_read_mb_s: Disk read throughput (MB/s).
         disk_write_mb_s: Disk write throughput (MB/s).
         net_sent_mb_s: Network bytes sent per second (MB/s).
         net_recv_mb_s: Network bytes received per second (MB/s).
-
-    Example:
-        >>> snap = ResourceSnapshot(
-        ...     node_id="node_01", cpu_percent=72.5, memory_percent=45.0)
-        >>> snap.cpu_percent
-        72.5
     """
 
-    node_id: str
-    cpu_percent: float
-    memory_percent: float
+    node_id: str = "node_0"
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    cpu_count: int = 1
+    ram_used_mb: float = 0.0
+    ram_available_mb: float = 0.0
+    gpu_available: bool = False
+    gpu_name: str | None = None
+    gpu_device: str | None = None
+    gpu_utilization_percent: float | None = None
     gpu_percent: float | None = None
+    gpu_memory_used_mb: float | None = None
+    gpu_memory_total_mb: float | None = None
     gpu_memory_percent: float | None = None
+    gpu_temperature_c: float | None = None
+    gpu_power_w: float | None = None
+    queue_length: int = 0
+    active_workers: int = 0
+    ocr_latency_ms: float | None = None
+    ocr_throughput_pages_s: float | None = None
     disk_read_mb_s: float = 0.0
     disk_write_mb_s: float = 0.0
     net_sent_mb_s: float = 0.0
     net_recv_mb_s: float = 0.0
 
     def __post_init__(self) -> None:
-        """Validate resource snapshot values.
-
-        Raises:
-            ValidationError: If any utilization value is out of range.
-        """
+        """Validate resource snapshot values and synchronize aliases."""
         for attr_name, val in [
             ("cpu_percent", self.cpu_percent),
             ("memory_percent", self.memory_percent),
@@ -117,6 +138,13 @@ class ResourceSnapshot:
                     field=attr_name,
                     value=val,
                 )
+
+        # Synchronize gpu_percent and gpu_utilization_percent aliases
+        if self.gpu_utilization_percent is not None and self.gpu_percent is None:
+            self.gpu_percent = self.gpu_utilization_percent
+        elif self.gpu_percent is not None and self.gpu_utilization_percent is None:
+            self.gpu_utilization_percent = self.gpu_percent
+
         if self.gpu_percent is not None and not (0.0 <= self.gpu_percent <= 100.0):
             raise ValidationError(
                 "ResourceSnapshot.gpu_percent must be in [0.0, 100.0].",
@@ -124,19 +152,92 @@ class ResourceSnapshot:
                 value=self.gpu_percent,
             )
 
+        if self.gpu_memory_percent is not None and not (0.0 <= self.gpu_memory_percent <= 100.0):
+            raise ValidationError(
+                "ResourceSnapshot.gpu_memory_percent must be in [0.0, 100.0].",
+                field="gpu_memory_percent",
+                value=self.gpu_memory_percent,
+            )
+
+    @property
+    def ram_percent(self) -> float:
+        """Alias for memory_percent."""
+        return self.memory_percent
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dictionary.
 
         Returns:
             Dictionary representation of this resource snapshot.
         """
-        return asdict(self)
+        d = asdict(self)
+        d["ram_percent"] = self.ram_percent
+        return d
+
+    def format_summary(self) -> str:
+        """Format as a clean, readable ASCII summary block."""
+        gpu_util_str = (
+            f"{self.gpu_utilization_percent:.1f}%"
+            if self.gpu_utilization_percent is not None
+            else "UNAVAILABLE"
+        )
+        gpu_mem_str = (
+            f"{self.gpu_memory_used_mb:.1f} / {self.gpu_memory_total_mb:.1f} MB"
+            if (self.gpu_memory_used_mb is not None and self.gpu_memory_total_mb is not None)
+            else (
+                f"Total: {self.gpu_memory_total_mb:.1f} MB"
+                if self.gpu_memory_total_mb is not None
+                else "UNAVAILABLE"
+            )
+        )
+        temp_str = (
+            f"{self.gpu_temperature_c:.1f} C"
+            if self.gpu_temperature_c is not None
+            else "UNAVAILABLE"
+        )
+        pwr_str = (
+            f"{self.gpu_power_w:.1f} W"
+            if self.gpu_power_w is not None
+            else "UNAVAILABLE"
+        )
+        ocr_lat_str = (
+            f"{self.ocr_latency_ms:.2f} ms"
+            if self.ocr_latency_ms is not None
+            else "N/A"
+        )
+        ocr_thru_str = (
+            f"{self.ocr_throughput_pages_s:.2f} p/s"
+            if self.ocr_throughput_pages_s is not None
+            else "N/A"
+        )
+
+        lines = [
+            f"Resource Snapshot [{self.timestamp}]",
+            "-" * 50,
+            f"  Node ID:            {self.node_id}",
+            f"  CPU Utilization:    {self.cpu_percent:.1f}% ({self.cpu_count} cores)",
+            f"  RAM Utilization:    {self.memory_percent:.1f}% (Used: {self.ram_used_mb:.1f} MB, Avail: {self.ram_available_mb:.1f} MB)",
+            f"  GPU Available:      {'YES' if self.gpu_available else 'NO'}",
+            f"  GPU Device:         {self.gpu_name or 'None'} ({self.gpu_device or 'None'})",
+            f"  GPU Utilization:    {gpu_util_str}",
+            f"  GPU Memory:         {gpu_mem_str}",
+            f"  GPU Temperature:    {temp_str}",
+            f"  GPU Power:          {pwr_str}",
+            f"  Queue Length:       {self.queue_length}",
+            f"  Active Workers:     {self.active_workers}",
+            f"  OCR Latency:        {ocr_lat_str}",
+            f"  OCR Throughput:     {ocr_thru_str}",
+            "-" * 50,
+        ]
+        return "\n".join(lines)
 
     def __repr__(self) -> str:
         return (
-            f"ResourceSnapshot(node_id='{self.node_id}', "
+            f"ResourceSnapshot(node='{self.node_id}', "
             f"cpu={self.cpu_percent:.1f}%, "
-            f"mem={self.memory_percent:.1f}%)"
+            f"ram={self.memory_percent:.1f}%, "
+            f"gpu={'avail' if self.gpu_available else 'none'}, "
+            f"queue={self.queue_length})"
         )
 
 

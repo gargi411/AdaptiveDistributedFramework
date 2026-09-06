@@ -12,8 +12,10 @@ Modules:
     unified_document: UnifiedDocument, DocumentLayout, DocumentStatistics (Phase 3)
     events: ProcessingEvent, EventType (Phase 3)
     processing_metrics: PageProcessingMetrics, StageMetrics (Phase 3)
+    chunk: Chunk (Phase 4.2 — Semantic Chunking Engine)
 """
 
+from adaptive_framework.models.chunk import Chunk, _make_chunk_id
 from adaptive_framework.models.document import (
     DocumentResult,
     PageMetadata,
@@ -56,6 +58,9 @@ from adaptive_framework.models.unified_document import (
 )
 
 __all__ = [
+    # chunk (Phase 4.2)
+    "Chunk",
+    "_make_chunk_id",
     # document (Phase 1/2)
     "PDFMetadata",
     "PageMetadata",

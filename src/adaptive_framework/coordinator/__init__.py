@@ -14,7 +14,6 @@ Architecture v2.0 §2.3: Distributed Coordinator (Ray-based)
 
 from adaptive_framework.coordinator.cluster_manager import ClusterManager
 from adaptive_framework.coordinator.node_info import NodeInfo
-from adaptive_framework.coordinator.distributed_coordinator import DistributedCoordinator
 from adaptive_framework.coordinator.worker_registry import WorkerRecord, WorkerRegistry
 from adaptive_framework.coordinator.heartbeat_monitor import (
     HeartbeatEvent,
@@ -37,7 +36,6 @@ from adaptive_framework.coordinator.resource_orchestrator import ResourceOrchest
 __all__ = [
     "ClusterManager",
     "NodeInfo",
-    "DistributedCoordinator",
     "WorkerRecord",
     "WorkerRegistry",
     "HeartbeatEvent",

@@ -53,6 +53,8 @@ class DashboardStateStore:
         # History for sparkline charts
         self._cpu_history: list[float] = []
         self._ram_history: list[float] = []
+        self._gpu_util_history: list[float] = []
+        self._gpu_mem_history: list[float] = []
         self._queue_history: list[int] = []
         self._throughput_history: list[float] = []
         self._history_max: int = 60  # 60 data points = 5 min at 5s interval
@@ -112,6 +114,27 @@ class DashboardStateStore:
                 "node_count": 0,
                 "uptime_seconds": 0.0,
             },
+            "gpu": {
+                "available": False,
+                "device_name": None,
+                "openvino_device_id": None,
+                "utilization_percent": None,
+                "memory_used_mb": None,
+                "memory_total_mb": None,
+                "temperature_c": None,
+                "power_w": None,
+            },
+            "adaptive_routing": {
+                "enabled": True,
+                "policy_version": "v1.0",
+                "total_decisions": 0,
+                "cpu_decisions": 0,
+                "gpu_decisions": 0,
+                "fallback_decisions": 0,
+                "gpu_failure_count": 0,
+                "device_selection_ratio": {"cpu": 0.0, "gpu": 0.0},
+                "recent_decisions": [],
+            },
             "queue_size": 0,
             "workers": [],
             "heartbeat_events": [],
@@ -161,10 +184,21 @@ class DashboardStateStore:
             completed = dispatcher.get("total_completed", 0)
             self._throughput_history.append(float(completed))
 
+            # Update GPU histories if available
+            gpu = data.get("gpu", {})
+            gpu_util = gpu.get("utilization_percent")
+            if gpu_util is not None:
+                self._gpu_util_history.append(float(gpu_util))
+            gpu_mem = gpu.get("memory_used_mb")
+            if gpu_mem is not None:
+                self._gpu_mem_history.append(float(gpu_mem))
+
             # Trim histories
             for lst in (
                 self._cpu_history,
                 self._ram_history,
+                self._gpu_util_history,
+                self._gpu_mem_history,
                 self._queue_history,
                 self._throughput_history,
             ):
@@ -186,6 +220,8 @@ class DashboardStateStore:
                 payload["_chart_history"] = {
                     "cpu": list(self._cpu_history),
                     "ram": list(self._ram_history),
+                    "gpu_util": list(self._gpu_util_history),
+                    "gpu_mem": list(self._gpu_mem_history),
                     "queue": list(self._queue_history),
                     "throughput": list(self._throughput_history),
                 }
@@ -227,6 +263,24 @@ class DashboardStateStore:
         """
         with self._lock:
             return list(self._ram_history)
+
+    def get_gpu_util_history(self) -> list[float]:
+        """Return GPU utilization history for sparkline chart.
+
+        Returns:
+            List of GPU % values (oldest first).
+        """
+        with self._lock:
+            return list(self._gpu_util_history)
+
+    def get_gpu_mem_history(self) -> list[float]:
+        """Return GPU memory history in MB.
+
+        Returns:
+            List of GPU memory used values (oldest first).
+        """
+        with self._lock:
+            return list(self._gpu_mem_history)
 
     def get_queue_history(self) -> list[int]:
         """Return queue size history.
@@ -272,6 +326,8 @@ class DashboardStateStore:
                     ch = data.get("_chart_history", {})
                     store._cpu_history = [float(x) for x in ch.get("cpu", [])]
                     store._ram_history = [float(x) for x in ch.get("ram", [])]
+                    store._gpu_util_history = [float(x) for x in ch.get("gpu_util", [])]
+                    store._gpu_mem_history = [float(x) for x in ch.get("gpu_mem", [])]
                     store._queue_history = [int(x) for x in ch.get("queue", [])]
                     store._throughput_history = [float(x) for x in ch.get("throughput", [])]
             except Exception:

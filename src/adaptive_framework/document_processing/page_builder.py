@@ -73,7 +73,11 @@ def _processing_method_from_str(method_str: str) -> ProcessingMethod:
         "skipped": ProcessingMethod.SKIPPED,
         "failed": ProcessingMethod.FAILED,
     }
-    return mapping.get(method_str, ProcessingMethod.FAILED)
+    if method_str in mapping:
+        return mapping[method_str]
+    if method_str.startswith("openvino_ocr") or method_str.startswith("openvino_stub"):
+        return ProcessingMethod.OCR
+    return ProcessingMethod.FAILED
 
 
 class PageObjectBuilder:
@@ -93,6 +97,8 @@ class PageObjectBuilder:
         event_bus: EventBus for publishing processing events. None = no events.
         ocr_dpi: DPI for rasterising scanned pages.
         ocr_lang: Language code for OCR.
+        ocr_backend: OCR backend engine ('paddleocr', 'openvino').
+        ocr_device: Execution device for OpenVINO ('GPU', 'CPU', 'AUTO').
     """
 
     def __init__(
@@ -107,11 +113,16 @@ class PageObjectBuilder:
         event_bus: EventBus | None = None,
         ocr_dpi: int = 150,
         ocr_lang: str = "en",
+        ocr_backend: str = "paddleocr",
+        ocr_device: str = "GPU",
     ) -> None:
         self._worker_id = worker_id
         self._node_id = node_id or socket.gethostname()
         self._factory = strategy_factory or ProcessingStrategyFactory(
-            ocr_dpi=ocr_dpi, ocr_lang=ocr_lang
+            ocr_dpi=ocr_dpi,
+            ocr_lang=ocr_lang,
+            ocr_backend=ocr_backend,
+            ocr_device=ocr_device,
         )
         self._layout = layout_analyser or DoclingLayoutAnalyser()
         self._tables = table_extractor or TableExtractor()

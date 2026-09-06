@@ -93,6 +93,36 @@ def render_cluster_overview(state: dict[str, Any]) -> None:
                 alive_str = "Yes [OK]" if cm.get("alive") else "No [ERROR]"
                 st.write(f"**Ray Alive:** `{alive_str}`")
 
+    # -- GPU Telemetry (Phase G3) -------------------------------------------
+    gpu = state.get("gpu")
+    if gpu and gpu.get("available"):
+        with st.expander("GPU Resource Telemetry (Intel Iris Xe / OpenVINO)", expanded=True):
+            gcols = st.columns(4)
+            with gcols[0]:
+                st.write(f"**Device:** `{gpu.get('device_name', 'Intel GPU')}`")
+                st.write(f"**OpenVINO ID:** `{gpu.get('openvino_device_id', 'GPU')}`")
+            with gcols[1]:
+                util = gpu.get("utilization_percent")
+                util_str = f"{util:.1f}%" if util is not None else "UNAVAILABLE"
+                st.metric("GPU Utilization", util_str)
+            with gcols[2]:
+                used = gpu.get("memory_used_mb")
+                tot = gpu.get("memory_total_mb")
+                if used is not None and tot is not None:
+                    mem_str = f"{used:.1f} / {tot:.1f} MB"
+                elif tot is not None:
+                    mem_str = f"Total: {tot:.1f} MB"
+                else:
+                    mem_str = "UNAVAILABLE"
+                st.metric("GPU Memory", mem_str)
+            with gcols[3]:
+                temp = gpu.get("temperature_c")
+                pwr = gpu.get("power_w")
+                temp_str = f"{temp:.1f} C" if temp is not None else "UNAVAILABLE"
+                pwr_str = f"{pwr:.1f} W" if pwr is not None else "UNAVAILABLE"
+                st.write(f"**Temperature:** `{temp_str}` (iGPU shared die)")
+                st.write(f"**Power:** `{pwr_str}` (SoC package)")
+
 
 def _fmt_uptime(seconds: float) -> str:
     """Format seconds as H:MM:SS.

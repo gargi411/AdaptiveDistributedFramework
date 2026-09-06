@@ -114,6 +114,8 @@ class DocumentProcessingWorker:
         event_bus: EventBus | None = None,
         ocr_dpi: int = 150,
         ocr_lang: str = "en",
+        ocr_backend: str = "paddleocr",
+        ocr_device: str = "GPU",
     ) -> None:
         self._worker_id = worker_id
         self._node_id = node_id or socket.gethostname()
@@ -124,6 +126,8 @@ class DocumentProcessingWorker:
             event_bus=event_bus,
             ocr_dpi=ocr_dpi,
             ocr_lang=ocr_lang,
+            ocr_backend=ocr_backend,
+            ocr_device=ocr_device,
         )
 
     def process_work_unit(

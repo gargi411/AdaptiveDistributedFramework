@@ -294,3 +294,41 @@ class OCRError(ProcessingError):
         super().__init__(message, document_id, context)
         self.page_number = page_number
         self.backend = backend
+
+
+# =============================================================
+# Tier-1 RAG Exceptions (Phase 4.5)
+# =============================================================
+
+
+class RAGError(FrameworkError):
+    """Base exception for RAG retrieval, context, prompt, or generation errors."""
+
+
+class ContextBuildError(RAGError):
+    """Raised when context building or bounding fails."""
+
+
+class PromptBuildError(RAGError):
+    """Raised when prompt construction fails."""
+
+
+class LLMProviderError(RAGError):
+    """Raised when an LLM provider encounters an error during inference."""
+
+
+class LLMTimeoutError(LLMProviderError):
+    """Raised when an LLM provider times out during generation."""
+
+
+class LLMGenerationError(LLMProviderError):
+    """Raised when an LLM provider encounters an error generating or parsing an answer."""
+
+
+class RetrievalEngineError(RAGError):
+    """Raised when vector, sparse, or hybrid retrieval fails."""
+
+
+class RerankerError(RAGError):
+    """Raised when cross-encoder reranking fails."""
+

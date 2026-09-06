@@ -377,14 +377,18 @@ class DistributedCoordinator:
         """
         self._dispatcher.report_completed(work_unit_id)
 
-    def report_failed(self, work_unit_id: str, reason: str = "Unknown error") -> None:
+    def report_failed(self, work_unit_id: str, reason: str = "Unknown error") -> bool:
         """Mark a work unit as failed.
 
         Args:
             work_unit_id: ID of the failed PageWorkUnit.
             reason: Description of the failure.
+
+        Returns:
+            True if the work unit was found in active assignments and recorded
+            as failed; False if the work unit ID was not recognised.
         """
-        self._dispatcher.report_failed(work_unit_id, reason)
+        return self._dispatcher.report_failed(work_unit_id, reason)
 
     # ------------------------------------------------------------------ #
     # Callbacks                                                            #

@@ -69,6 +69,9 @@ class PageExtractionResult:
     text_extraction_time_s: float = 0.0
     ocr_time_s: float = 0.0
     layout_time_s: float = 0.0
+    ocr_engine: str | None = None
+    ocr_device: str | None = None
+    ocr_model: str | None = None
 
 
 class IProcessingStrategy(ABC):
@@ -481,6 +484,142 @@ class SkippedStrategy(IProcessingStrategy):
         )
 
 
+class AdaptiveRoutingStrategyProxy(IProcessingStrategy):
+    """Adaptive routing proxy that routes scanned page OCR between CPU and GPU.
+
+    Consumes real-time G3 ResourceSnapshot telemetry and WorkloadProfile
+    to decide between GPU and CPU execution. If GPU execution fails at runtime,
+    it records the event, logs the error, and automatically falls back to CPU OCR.
+    """
+
+    def __init__(
+        self,
+        gpu_strategy: IProcessingStrategy,
+        cpu_strategy: IProcessingStrategy,
+        router: Any | None = None,
+        resource_monitor: Any | None = None,
+    ) -> None:
+        """Initialize the adaptive routing proxy.
+
+        Args:
+            gpu_strategy: Strategy instance targeting GPU.
+            cpu_strategy: Strategy instance targeting CPU.
+            router: AdaptiveWorkRouter instance (created if None).
+            resource_monitor: ResourceMonitor instance for runtime telemetry.
+        """
+        self._gpu_strategy = gpu_strategy
+        self._cpu_strategy = cpu_strategy
+        self._router = router
+        self._monitor = resource_monitor
+        self._characterizer: Any = None
+
+        if self._router is None:
+            try:
+                from adaptive_framework.acceleration.adaptive_router import AdaptiveWorkRouter
+                self._router = AdaptiveWorkRouter()
+            except Exception as exc:
+                logger.warning("Could not instantiate AdaptiveWorkRouter: %s", exc)
+
+        try:
+            from adaptive_framework.acceleration.workload_characterizer import WorkloadCharacterizer
+            self._characterizer = WorkloadCharacterizer()
+        except Exception as exc:
+            logger.warning("Could not instantiate WorkloadCharacterizer: %s", exc)
+
+    @property
+    def strategy_name(self) -> str:
+        return "adaptive_routing_proxy"
+
+    @property
+    def router(self) -> Any:
+        return self._router
+
+    def process(
+        self,
+        page: Any,
+        page_number: int,
+        document_id: str,
+        file_path: str,
+        workload_profile: Any | None = None,
+        resource_snapshot: Any | None = None,
+    ) -> PageExtractionResult:
+        """Process page using dynamically selected device with seamless CPU fallback."""
+        # 1. Workload profile
+        if workload_profile is None and self._characterizer is not None and page is not None:
+            try:
+                workload_profile = self._characterizer.characterize_page(
+                    page, page_number=page_number, document_id=document_id
+                )
+            except Exception as exc:
+                logger.debug("Workload characterization fallback: %s", exc)
+
+        if workload_profile is None:
+            try:
+                from adaptive_framework.acceleration.workload_characterizer import WorkloadProfile
+                workload_profile = WorkloadProfile(
+                    document_id=document_id,
+                    page_number=page_number,
+                    is_scanned=True,
+                    estimated_complexity=0.5,
+                )
+            except Exception:
+                pass
+
+        # 2. Resource snapshot
+        if resource_snapshot is None and self._monitor is not None:
+            try:
+                resource_snapshot = self._monitor.sample()
+            except Exception as exc:
+                logger.debug("Resource snapshot query fallback: %s", exc)
+
+        # 3. Route decision
+        target_device = "CPU"
+        decision = None
+        if self._router is not None and workload_profile is not None:
+            try:
+                decision = self._router.route(workload_profile, resource_snapshot)
+                target_device = decision.target_device
+            except Exception as exc:
+                logger.warning("Adaptive router error (%s), defaulting to CPU", exc)
+                target_device = "CPU"
+
+        # 4. Execute on selected device
+        if target_device == "GPU":
+            try:
+                if hasattr(self._gpu_strategy, "model_loaded") and not self._gpu_strategy.model_loaded:
+                    self._gpu_strategy.initialize()
+                result = self._gpu_strategy.process(page, page_number, document_id, file_path)
+                result.ocr_device = "GPU"
+                return result
+            except Exception as exc:
+                # Catch GPU execution failure and trigger fallback
+                logger.error(
+                    "GPU execution failure on page %d of '%s': %s. Executing CPU fallback.",
+                    page_number, file_path, exc,
+                )
+                if self._router is not None and workload_profile is not None:
+                    self._router.record_execution_fallback(
+                        failed_device="GPU",
+                        fallback_device="CPU",
+                        error_message=str(exc),
+                        workload=workload_profile,
+                    )
+                if hasattr(self._cpu_strategy, "model_loaded") and not self._cpu_strategy.model_loaded:
+                    self._cpu_strategy.initialize()
+                fallback_result = self._cpu_strategy.process(page, page_number, document_id, file_path)
+                fallback_result.warnings.append(
+                    f"GPU execution failed ({exc}); fell back to CPU OCR."
+                )
+                fallback_result.ocr_device = "CPU_FALLBACK"
+                return fallback_result
+        else:
+            if hasattr(self._cpu_strategy, "model_loaded") and not self._cpu_strategy.model_loaded:
+                self._cpu_strategy.initialize()
+            result = self._cpu_strategy.process(page, page_number, document_id, file_path)
+            result.ocr_device = "CPU"
+            return result
+
+
 class ProcessingStrategyFactory:
     """Factory that selects the correct processing strategy for a page type.
 
@@ -492,19 +631,76 @@ class ProcessingStrategyFactory:
     Workers call get_strategy() — no if/else on page type anywhere else.
     """
 
-    def __init__(self, ocr_dpi: int = 150, ocr_lang: str = "en") -> None:
+    def __init__(
+        self,
+        ocr_dpi: int = 150,
+        ocr_lang: str = "en",
+        ocr_backend: str = "paddleocr",
+        ocr_device: str = "GPU",
+        ocr_strategy: IProcessingStrategy | None = None,
+        router: Any | None = None,
+        resource_monitor: Any | None = None,
+        enable_adaptive_routing: bool = False,
+    ) -> None:
         """Initialise factory with shared strategy instances.
 
         Args:
             ocr_dpi: DPI for OCR rasterisation.
             ocr_lang: Language code for OCR.
+            ocr_backend: OCR engine to use ('paddleocr', 'openvino').
+            ocr_device: Execution device for OpenVINO ('GPU', 'CPU', 'AUTO').
+            ocr_strategy: Explicit strategy instance override.
+            router: Optional AdaptiveWorkRouter instance.
+            resource_monitor: Optional ResourceMonitor instance.
+            enable_adaptive_routing: If True, uses AdaptiveRoutingStrategyProxy for OCR.
         """
+        self._router = router
+        self._resource_monitor = resource_monitor
+
+        if ocr_strategy is not None:
+            scanned_strat = ocr_strategy
+        elif enable_adaptive_routing and ocr_backend.lower() == "openvino":
+            try:
+                from adaptive_framework.acceleration.openvino_ocr_strategy import OpenVINOOCRStrategy
+                gpu_strat = OpenVINOOCRStrategy(device="GPU", ocr_dpi=ocr_dpi)
+                cpu_strat = OpenVINOOCRStrategy(device="CPU", ocr_dpi=ocr_dpi)
+                scanned_strat = AdaptiveRoutingStrategyProxy(
+                    gpu_strategy=gpu_strat,
+                    cpu_strategy=cpu_strat,
+                    router=self._router,
+                    resource_monitor=self._resource_monitor,
+                )
+                self._router = scanned_strat.router
+            except Exception as exc:
+                logger.warning(
+                    "Could not configure AdaptiveRoutingStrategyProxy (%s), falling back to single OCR strategy",
+                    exc,
+                )
+                scanned_strat = OCRStrategy(dpi=ocr_dpi, lang=ocr_lang)
+        elif ocr_backend.lower() == "openvino":
+            try:
+                from adaptive_framework.acceleration.openvino_ocr_strategy import OpenVINOOCRStrategy
+                scanned_strat = OpenVINOOCRStrategy(device=ocr_device, ocr_dpi=ocr_dpi)
+            except Exception as exc:
+                logger.warning("Could not instantiate OpenVINOOCRStrategy (%s), falling back to OCRStrategy", exc)
+                scanned_strat = OCRStrategy(dpi=ocr_dpi, lang=ocr_lang)
+        else:
+            scanned_strat = OCRStrategy(dpi=ocr_dpi, lang=ocr_lang)
+
         self._strategies: dict[PageType, IProcessingStrategy] = {
             PageType.DIGITAL: DirectExtractionStrategy(),
-            PageType.SCANNED: OCRStrategy(dpi=ocr_dpi, lang=ocr_lang),
+            PageType.SCANNED: scanned_strat,
             PageType.MIXED: MixedStrategy(dpi=ocr_dpi, lang=ocr_lang),
             PageType.UNKNOWN: DirectExtractionStrategy(),  # best-effort
         }
+
+    @property
+    def router(self) -> Any:
+        """Return the active AdaptiveWorkRouter if adaptive routing is enabled."""
+        scanned = self._strategies.get(PageType.SCANNED)
+        if isinstance(scanned, AdaptiveRoutingStrategyProxy):
+            return scanned.router
+        return self._router
 
     def get_strategy(self, page_type: PageType) -> IProcessingStrategy:
         """Return the strategy for the given page type.

@@ -89,6 +89,7 @@ data/embeddings/
 
 # Model weights (too large for git)
 models/weights/
+models/openvino/
 
 # Evaluation output
 evaluation_results/
@@ -116,3 +117,9 @@ outputs/
 
 # Generated metadata cache
 dataset/metadata/
+
+# Local backup archives
+*.zip
+
+# Local runtime/error artifacts
+kernel.errors.txt

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """validate_configuration.py — Configuration validation script.
 
 Loads all YAML configuration files and validates them through
@@ -31,7 +31,7 @@ def validate_all(config_dir: Path) -> int:
         0 on success, 1 on any validation failure.
     """
     print("=" * 60)
-    print("  Adaptive Distributed Framework — Config Validation")
+    print("  Adaptive Distributed Framework - Config Validation")
     print(f"  Directory: {config_dir.resolve()}")
     print("=" * 60)
     print()
@@ -51,13 +51,13 @@ def validate_all(config_dir: Path) -> int:
     errors: list[tuple[str, str]] = []
 
     checks = [
-        ("framework.yaml    → FrameworkConfig", cfg.get_framework_config),
-        ("logging.yaml      → LoggingConfig", cfg.get_logging_config),
-        ("ray_cluster.yaml  → RayClusterConfig", cfg.get_ray_cluster_config),
-        ("scheduler.yaml    → SchedulerConfig", cfg.get_scheduler_config),
-        ("ocr.yaml          → DocumentProcessingEngineConfig", cfg.get_document_processing_engine_config),
-        ("evaluation.yaml   → EvaluationConfig", cfg.get_evaluation_config),
-        ("rag.yaml          → RAGConfig", cfg.get_rag_config),
+        ("framework.yaml    -> FrameworkConfig", cfg.get_framework_config),
+        ("logging.yaml      -> LoggingConfig", cfg.get_logging_config),
+        ("ray_cluster.yaml  -> RayClusterConfig", cfg.get_ray_cluster_config),
+        ("scheduler.yaml    -> SchedulerConfig", cfg.get_scheduler_config),
+        ("ocr.yaml          -> DocumentProcessingEngineConfig", cfg.get_document_processing_engine_config),
+        ("evaluation.yaml   -> EvaluationConfig", cfg.get_evaluation_config),
+        ("rag.yaml          -> RAGConfig", cfg.get_rag_config),
     ]
 
     print("> Validating configuration sections:")
@@ -67,9 +67,9 @@ def validate_all(config_dir: Path) -> int:
             print(f"  [OK] {label}")
             sections.append((label, result))
         except ConfigurationError as exc:
-            print(f"  [WARN] {label} — MISSING or INVALID (skipped): {exc}")
+            print(f"  [WARN] {label} - MISSING or INVALID (skipped): {exc}")
         except Exception as exc:
-            print(f"  [FAIL] {label} — ERROR: {exc}")
+            print(f"  [FAIL] {label} - ERROR: {exc}")
             errors.append((label, str(exc)))
 
     print()

@@ -54,6 +54,7 @@ from dashboard.components.work_stealing_panel import render_work_stealing_panel
 from dashboard.components.failure_panel import render_failure_panel
 from dashboard.components.log_panel import render_log_panel
 from dashboard.components.performance_charts import render_performance_charts
+from dashboard.components.adaptive_routing_panel import render_adaptive_routing_panel
 from dashboard.state.dashboard_state import DashboardStateStore
 
 # -- Constants --------------------------------------------------------------
@@ -156,6 +157,7 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
                 "Task Queue",
                 "Work Stealing",
                 "Failure Recovery",
+                "Adaptive CPU/GPU Routing",
                 "Performance Charts",
                 "Cluster Logs",
             ],
@@ -167,6 +169,7 @@ def _render_sidebar(store: DashboardStateStore, state: dict) -> dict:
                 "Task Queue",
                 "Work Stealing",
                 "Failure Recovery",
+                "Adaptive CPU/GPU Routing",
                 "Performance Charts",
                 "Cluster Logs",
             ],
@@ -336,6 +339,10 @@ def main() -> None:
 
     if "Failure Recovery" in sections:
         render_failure_panel(state)
+        st.divider()
+
+    if "Adaptive CPU/GPU Routing" in sections:
+        render_adaptive_routing_panel(state)
         st.divider()
 
     if "Performance Charts" in sections:

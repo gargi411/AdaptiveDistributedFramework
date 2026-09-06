@@ -24,9 +24,15 @@ pytest-asyncio>=0.23.6  # Async test support
 # ---- Pre-commit ----
 pre-commit>=3.7.0       # Git hooks manager
 
+# ---- Phase 4.3: Embedding Engine + FAISS Manager ----
+sentence-transformers>=2.6.0  # BGE embedding model (BAAI/bge-large-en-v1.5)
+faiss-cpu>=1.7.4              # Vector similarity search (CPU)
+
 # ---- Future Phases (commented — install when needed) ----
 # paddleocr>=2.7.0      # Phase 2: OCR backend
 # paddlepaddle>=2.6.0   # Phase 2: PaddlePaddle runtime
 # langchain>=0.1.0      # Phase 3: RAG pipeline
 # chromadb>=0.4.0       # Phase 3: Vector store
-# sentence-transformers>=2.6.0  # Phase 3: Embeddings
+# rank_bm25>=0.2.2      # Phase 4.4: BM25 retrieval
+# tiktoken>=0.5.0       # Phase 4.4: token counting
+# llama-cpp-python>=0.2.0  # Phase 4.5: local LLM inference

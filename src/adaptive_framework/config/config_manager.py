@@ -21,17 +21,23 @@ from pathlib import Path
 from typing import Any
 
 from adaptive_framework.config.models import (
+    BM25Config,
     ChunkerConfig,
     ConsoleLoggingConfig,
+    ContextConfig,
     DocumentProcessingEngineConfig,
     EmbedderConfig,
     EvaluationConfig,
     FileLoggingConfig,
     FrameworkConfig,
+    GenerationConfig,
+    HybridConfig,
     LoggingConfig,
     OCRConfig,
     RAGConfig,
     RayClusterConfig,
+    RerankingConfig,
+    RetrievalConfig,
     SchedulerConfig,
     SchedulerOverheadConfig,
     SchedulerOverheadMetricConfig,
@@ -408,6 +414,16 @@ class ConfigManager:
             chunker_raw = rag["chunker"]
             embedder_raw = rag["embedder"]
             vs_raw = rag["vector_store"]
+
+            gen_raw = rag.get("generation", {})
+            ctx_raw = rag.get("context", {})
+            ret_raw = rag.get("retrieval", {})
+            hyb_raw = ret_raw.get("hybrid", {})
+            bm25_raw = ret_raw.get("bm25", {})
+            rerank_raw = ret_raw.get("reranking", {})
+
+            # Phase 4.3, 4.5, 4.8, and 4.9 fields are optional with safe defaults so that
+            # existing rag.yaml files without these keys still load correctly.
             return RAGConfig(
                 enabled=rag["enabled"],
                 chunker=ChunkerConfig(
@@ -420,17 +436,70 @@ class ConfigManager:
                     device=embedder_raw["device"],
                     batch_size=embedder_raw["batch_size"],
                     embedding_dim=embedder_raw["embedding_dim"],
+                    cache_enabled=embedder_raw.get("cache_enabled", True),
+                    cache_path=embedder_raw.get(
+                        "cache_path", "outputs/rag/cache/embeddings.db"
+                    ),
                 ),
                 vector_store=VectorStoreConfig(
                     backend=vs_raw["backend"],
-                    persist_dir=vs_raw["persist_dir"],
-                    collection_name=vs_raw["collection_name"],
+                    persist_dir=vs_raw.get("persist_dir", "rag/vector_store"),
+                    collection_name=vs_raw.get("collection_name", "biomedical_docs"),
+                    index_type=vs_raw.get("index_type", "flat"),
+                    index_path=vs_raw.get("index_path", "outputs/rag/index"),
+                    n_clusters=vs_raw.get("n_clusters", 100),
+                ),
+                generation=GenerationConfig(
+                    provider=gen_raw.get("provider", "fake"),
+                    model=gen_raw.get("model", "fake-llm-v1"),
+                    temperature=float(gen_raw.get("temperature", 0.0)),
+                    max_tokens=int(gen_raw.get("max_tokens", 512)),
+                    api_key_env_var=gen_raw.get("api_key_env_var", "GEMINI_API_KEY"),
+                    timeout_seconds=float(gen_raw.get("timeout_seconds", 30.0)),
+                    base_url=gen_raw.get("base_url"),
+                ),
+                context=ContextConfig(
+                    max_chunks=int(ctx_raw.get("max_chunks", 5)),
+                    max_context_chars=int(ctx_raw.get("max_context_chars", 4000)),
+                    min_score=float(ctx_raw.get("min_score", 0.0)),
+                ),
+                retrieval=RetrievalConfig(
+                    strategy=ret_raw.get("strategy", "dense"),
+                    top_k=int(ret_raw.get("top_k", 5)),
+                    max_top_k=int(ret_raw.get("max_top_k", 50)),
+                    similarity_metric=ret_raw.get("similarity_metric", "cosine"),
+                    min_score_threshold=float(ret_raw.get("min_score_threshold", 0.0)),
+                    hybrid=HybridConfig(
+                        enabled=bool(hyb_raw.get("enabled", False)),
+                        dense_top_k=int(hyb_raw.get("dense_top_k", 20)),
+                        sparse_top_k=int(hyb_raw.get("sparse_top_k", 20)),
+                        final_top_k=int(hyb_raw.get("final_top_k", 5)),
+                        rrf_k=int(hyb_raw.get("rrf_k", 60)),
+                    ),
+                    bm25=BM25Config(
+                        k1=float(bm25_raw.get("k1", 1.5)),
+                        b=float(bm25_raw.get("b", 0.75)),
+                        index_path=bm25_raw.get("index_path", "outputs/rag/index"),
+                    ),
+                    reranking=RerankingConfig(
+                        enabled=bool(rerank_raw.get("enabled", False)),
+                        model_name=str(
+                            rerank_raw.get(
+                                "model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+                            )
+                        ),
+                        candidate_top_k=int(rerank_raw.get("candidate_top_k", 20)),
+                        final_top_k=int(rerank_raw.get("final_top_k", 5)),
+                        batch_size=int(rerank_raw.get("batch_size", 16)),
+                        device=str(rerank_raw.get("device", "auto")),
+                    ),
                 ),
             )
         except KeyError as exc:
             raise ConfigurationError(
                 f"Missing required key in rag.yaml: {exc}"
             ) from exc
+
 
     def get_raw(self) -> dict[str, Any]:
         """Return the raw merged YAML dictionary.

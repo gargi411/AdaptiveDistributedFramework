@@ -1,8 +1,8 @@
 # =============================================================
-# rag.yaml — RAG Demo Configuration
+# rag.yaml -- RAG Configuration
 # Adaptive Distributed Framework v2.0
-# Phase 5 implementation — placeholder values for Phase 1
-# Pipeline: Ingestion → Chunking → Embedding → Vector Store → Query
+# Phase 4.4 -- Retrieval Engine
+# Pipeline: Ingestion -> Chunking -> Embedding -> Vector Store -> Retrieval
 # =============================================================
 
 rag:
@@ -11,43 +11,126 @@ rag:
 
   chunker:
     # Chunking strategy: "fixed_size" | "sentence" | "semantic"
-    strategy: "fixed_size"
+    strategy: "semantic"
 
-    # Target chunk size in tokens
+    # Target chunk size in characters
     chunk_size: 512
 
-    # Overlap between consecutive chunks (tokens)
+    # Overlap in characters carried into the next chunk
     chunk_overlap: 64
 
-  embedder:
-    # Embedding model: "sentence-transformers/all-MiniLM-L6-v2" etc.
-    model: "sentence-transformers/all-MiniLM-L6-v2"
+    # Minimum characters a chunk must contain before it is emitted standalone.
+    # Fragments below this size are merged into the previous chunk.
+    min_chunk_size: 50
 
-    # Embedding device: "cpu" | "cuda"
+    # Hard ceiling on chunk length in characters.
+    max_chunk_size: 2000
+
+  # Phase 4.3: Embedding model configuration
+  embedding:
+    # Embedding model: BAAI/bge-large-en-v1.5 (1024-dim, asymmetric encoding)
+    model: "BAAI/bge-large-en-v1.5"
+
+    # Number of chunks per model forward pass
+    batch_size: 64
+
+    # Compute device: "cpu" (default) | "cuda"
+    # GPU acceleration will be integrated separately in a later phase.
     device: "cpu"
 
-    # Batch size for embedding generation
-    batch_size: 32
+    # Enable SHA-256-keyed SQLite embedding cache
+    cache_enabled: true
 
-    # Output embedding dimension (must match model)
-    embedding_dim: 384
+    # Path to the SQLite cache file (relative to project root)
+    cache_path: "outputs/rag/cache/embeddings.db"
 
+  # Phase 4.3: FAISS vector store configuration
   vector_store:
-    # Backend: "chromadb" | "faiss" | "qdrant"
-    backend: "chromadb"
+    # Backend identifier (faiss for Phase 4.3)
+    backend: "faiss"
 
-    # Persistence directory (relative to framework output_dir)
-    persist_dir: "rag/vector_store"
+    # FAISS index type: "flat" (IndexFlatIP) | "ivf" (IndexIVFFlat) | "hnsw" (IndexHNSWFlat)
+    # Default: "flat" -- exact cosine search, suitable for corpora up to ~100K chunks.
+    index_type: "flat"
 
-    # Collection name inside the vector store
+    # Directory where index.faiss, metadata.pkl, index_stats.json are written
+    index_path: "outputs/rag/index"
+
+    # Number of IVF clusters (only used when index_type == "ivf")
+    n_clusters: 100
+
+    # Collection name (kept for backward compatibility; not used by FAISSManager)
     collection_name: "biomedical_docs"
 
+    # Persistence directory (kept for backward compatibility)
+    persist_dir: "rag/vector_store"
+
+  # Phase 4.4, 4.8 & 4.9: Retrieval configuration
   retrieval:
-    # Number of top-k documents to retrieve per query
+    # Retrieval strategy: "dense" (default baseline) | "hybrid" (dense + BM25 + RRF) | "hybrid_reranked" (dense + BM25 + RRF + Cross-Encoder)
+    strategy: "dense"
+
+    # Default number of top-K chunks to return per query
     top_k: 5
 
-    # Similarity metric: "cosine" | "l2" | "ip"
+    # Maximum allowed top_k.  Requests above this limit are rejected.
+    max_top_k: 50
+
+    # Similarity metric used by the FAISS index: cosine (via inner product + L2-norm)
     similarity_metric: "cosine"
 
-    # Minimum similarity score to include a result (0.0 – 1.0)
-    min_score_threshold: 0.5
+    # Minimum cosine similarity score to include a result (0.0 = no filter).
+    # Applied as a post-retrieval filter in RetrievalEngine.retrieve().
+    min_score_threshold: 0.0
+
+    # Phase 4.8: Hybrid Dense + Sparse Retrieval settings
+    hybrid:
+      enabled: false
+      dense_top_k: 20
+      sparse_top_k: 20
+      final_top_k: 5
+      rrf_k: 60
+
+    # Phase 4.8: BM25 Lexical Retrieval settings
+    bm25:
+      k1: 1.5
+      b: 0.75
+      index_path: "outputs/rag/index"
+
+    # Phase 4.9: Cross-Encoder Reranking settings
+    reranking:
+      enabled: false
+      model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      candidate_top_k: 20
+      final_top_k: 5
+      batch_size: 16
+      device: "auto"
+
+
+
+  # Phase 4.5 & 4.6: LLM Generation configuration
+  # Supported providers: "fake" (offline/CI/unit tests) | "real" / "gemini" / "openai"
+  generation:
+    provider: "fake"
+    model: "fake-llm-v1"
+    temperature: 0.0
+    max_tokens: 512
+    # Environment variable holding provider API key (e.g. GEMINI_API_KEY, OPENAI_API_KEY)
+    api_key_env_var: "GEMINI_API_KEY"
+    timeout_seconds: 30.0
+    # Custom base URL (optional, for OpenAI-compatible proxies, Groq, Ollama, vLLM)
+    # base_url: "https://api.groq.com/openai/v1"
+
+  # Phase 4.5: Context building & prompt bounding
+  context:
+    max_chunks: 5
+    max_context_chars: 4000
+    min_score: 0.0
+
+  # Legacy embedder section (kept for ConfigManager backward compatibility)
+
+  embedder:
+    model: "BAAI/bge-large-en-v1.5"
+    device: "cpu"
+    batch_size: 64
+    embedding_dim: 1024

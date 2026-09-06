@@ -5,16 +5,19 @@
 # =============================================================
 
 document_processing_engine:
-  # OCR backend: "paddleocr" | "trocr" | "nougat" | "mineru" | "docling"
+  # OCR backend: "paddleocr" | "openvino" | "trocr" | "nougat" | "mineru" | "docling"
   # Swappable without architectural change (see architecture v2.0)
-  ocr_backend: "paddleocr"
+  ocr_backend: "openvino"
 
   ocr:
     # Language codes for OCR (ISO 639-1 or backend-specific codes)
     languages: ["en"]
 
     # Enable GPU acceleration if available
-    use_gpu: false
+    use_gpu: true
+
+    # Execution device for OpenVINO: "GPU" | "CPU" | "AUTO"
+    device: "GPU"
 
     # Confidence threshold for accepting OCR results (0.0 – 1.0)
     confidence_threshold: 0.85
@@ -42,3 +45,31 @@ document_processing_engine:
 
   # Number of parallel threads for CPU-bound OCR operations
   num_threads: 4
+
+  # Adaptive CPU/GPU Workload Routing (Phase G4)
+  adaptive_routing:
+    enabled: true
+    policy_version: "v1.0"
+    gpu:
+      min_workload_complexity: 0.35
+      max_utilization_percent: 85.0
+      min_memory_available_mb: 256.0
+    cpu:
+      max_utilization_percent: 80.0
+    small_workload:
+      max_pages: 1
+      max_complexity: 0.20
+    hysteresis:
+      enabled: true
+      cooldown_seconds: 2.0
+      utilization_delta_threshold: 5.0
+    # Phase G6 Data-Driven Routing
+    policy: "adaptive_g6"  # "rule_based_g4" | "adaptive_g6"
+    g6:
+      pixel_weight: 0.35
+      image_density_weight: 0.25
+      complexity_weight: 0.25
+      char_density_weight: 0.15
+      cold_start_amortization_pages: 15
+      min_confidence_threshold: 0.15
+
